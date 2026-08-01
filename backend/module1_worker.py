@@ -16,6 +16,7 @@ backend/main.py), so a fresh worker process — and therefore a fresh session �
 is guaranteed for every uploaded video.
 """
 
+import os
 import sys
 from pathlib import Path
 
@@ -24,6 +25,25 @@ MODULE1_DIR = REPO_ROOT / "module1"
 MODULE2_DIR = REPO_ROOT / "module2"
 
 _session = None
+
+
+def _same_path(a: str, b: str) -> bool:
+    """
+    Compare two sys.path entries as PATHS, not as strings.
+
+    An exact string comparison is not enough: the same directory reaches
+    sys.path in several equivalent spellings ('f:\\x' vs 'F:\\x' — Windows
+    drive-letter case, forward vs back slashes, trailing separator, relative
+    vs absolute). A missed match here fails silently and catastrophically —
+    Module 2's directory survives on the path, `import src` resolves to its
+    regular package instead of Module 1's namespace package, and the worker
+    runs the wrong module entirely.
+    """
+    try:
+        return (os.path.normcase(os.path.realpath(a))
+                == os.path.normcase(os.path.realpath(b)))
+    except (OSError, ValueError):
+        return False
 
 
 def init_worker() -> None:
@@ -41,10 +61,36 @@ def init_worker() -> None:
     outranked, before anything here imports `src` or `config`.
     """
     global _session
-    module2_dir = str(MODULE2_DIR)
-    sys.path[:] = [p for p in sys.path if p != module2_dir]
+    sys.path[:] = [p for p in sys.path if not _same_path(p, str(MODULE2_DIR))]
     sys.path.insert(0, str(MODULE1_DIR))
+
+    # Evict any ALREADY-IMPORTED `src`/`config` before importing Module 1's.
+    # Fixing sys.path only governs future lookups — an import that already
+    # happened is cached in sys.modules and would be returned as-is. This
+    # occurs whenever the process that spawned this worker had Module 2's
+    # packages imported at the time of the spawn (on Windows, `spawn`
+    # re-executes the parent's entry module in the child; see backend/run.py
+    # for why the app's entry point is guarded against exactly this).
+    for name in [m for m in sys.modules
+                 if m == "src" or m.startswith("src.")
+                 or m == "config" or m.startswith("config.")]:
+        del sys.modules[name]
+
     from src.session import GymCoachSession  # Module 1's src — only ever imported here
+
+    # Prove we got Module 1's package, not Module 2's same-named one. Without
+    # this, a path-isolation failure surfaces later as a baffling AttributeError
+    # or, worse, as plausible-looking output from the wrong pipeline.
+    import src
+    if getattr(src, "__file__", None):
+        src_dir = os.path.dirname(src.__file__)    # regular package (has __init__)
+    else:
+        src_dir = next(iter(src.__path__), "")      # namespace package (Module 1's)
+    if not _same_path(src_dir, str(MODULE1_DIR / "src")):
+        raise ImportError(
+            f"Module 1 worker resolved 'src' to {src_dir!r}, expected "
+            f"{str(MODULE1_DIR / 'src')!r}. Module 2's package shadowed it — "
+            f"sys.path isolation failed.")
 
     _session = GymCoachSession()
 

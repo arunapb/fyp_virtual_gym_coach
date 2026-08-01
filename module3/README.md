@@ -77,5 +77,5 @@ cd /Users/aruna/Documents/GitHub/nutrition-api
 pip install -r requirements.txt
 
 # 4. Start the server
-uvicorn app:app --host 0.0.0.0 --port 7860 --reload
+uvicorn app:app  --port 7860 --reload
 
