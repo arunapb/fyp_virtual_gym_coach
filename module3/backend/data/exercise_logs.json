@@ -1,0 +1,26 @@
+[
+  {
+    "date": "2026-07-25",
+    "exercise_name": "shoulder_press",
+    "duration_minutes": 15,
+    "calories_burned": 59.72
+  },
+  {
+    "date": "2026-07-27",
+    "exercise_name": "bicep_curl",
+    "duration_minutes": 15,
+    "calories_burned": 59.72
+  },
+  {
+    "date": "2026-07-29",
+    "exercise_name": "deadlift",
+    "duration_minutes": 20,
+    "calories_burned": 113.75
+  },
+  {
+    "date": "2026-07-31",
+    "exercise_name": "squat",
+    "duration_minutes": 30,
+    "calories_burned": 170.63
+  }
+]

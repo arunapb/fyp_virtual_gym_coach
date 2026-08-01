@@ -1,0 +1,83 @@
+[
+  {
+    "date": "2026-08-01",
+    "time": "21:15",
+    "user_id": "user_001",
+    "meal_type": "Breakfast",
+    "recipe_title": "15 Minute Pork Fried Rice",
+    "normalized_title": "15 minute pork fried rice",
+    "target_calories": 441
+  },
+  {
+    "date": "2026-08-01",
+    "time": "21:15",
+    "user_id": "user_001",
+    "meal_type": "Lunch",
+    "recipe_title": "Tex-Mex Turkey Soup",
+    "normalized_title": "tex-mex turkey soup",
+    "target_calories": 706
+  },
+  {
+    "date": "2026-08-01",
+    "time": "21:15",
+    "user_id": "user_001",
+    "meal_type": "Dinner",
+    "recipe_title": "5 Hour Beef Stew",
+    "normalized_title": "5 hour beef stew",
+    "target_calories": 618
+  },
+  {
+    "date": "2026-08-01",
+    "time": "21:15",
+    "user_id": "user_001",
+    "meal_type": "Breakfast",
+    "recipe_title": "Almost Green Scrambled Eggs With Spinach",
+    "normalized_title": "almost green scrambled eggs with spinach",
+    "target_calories": 441
+  },
+  {
+    "date": "2026-08-01",
+    "time": "21:15",
+    "user_id": "user_001",
+    "meal_type": "Lunch",
+    "recipe_title": "Andalusian Flamenco Eggs",
+    "normalized_title": "andalusian flamenco eggs",
+    "target_calories": 706
+  },
+  {
+    "date": "2026-08-01",
+    "time": "21:15",
+    "user_id": "user_001",
+    "meal_type": "Dinner",
+    "recipe_title": "All In One Crock Pot Chicken Dinner",
+    "normalized_title": "all in one crock pot chicken dinner",
+    "target_calories": 618
+  },
+  {
+    "date": "2026-08-01",
+    "time": "21:15",
+    "user_id": "user_001",
+    "meal_type": "Breakfast",
+    "recipe_title": "4Th Of July Salmon With Egg Sauce",
+    "normalized_title": "4th of july salmon with egg sauce",
+    "target_calories": 441
+  },
+  {
+    "date": "2026-08-01",
+    "time": "21:15",
+    "user_id": "user_001",
+    "meal_type": "Lunch",
+    "recipe_title": "Another Dry Rib Recipe",
+    "normalized_title": "another dry rib recipe",
+    "target_calories": 706
+  },
+  {
+    "date": "2026-08-01",
+    "time": "21:15",
+    "user_id": "user_001",
+    "meal_type": "Dinner",
+    "recipe_title": "Amy S Crock Pot Chicken And Noodles",
+    "normalized_title": "amy s crock pot chicken and noodles",
+    "target_calories": 618
+  }
+]
