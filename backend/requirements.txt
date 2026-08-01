@@ -27,3 +27,16 @@ pandas>=2.2
 matplotlib>=3.9
 sounddevice>=0.5
 soundfile>=0.12
+
+# --- Module 4 (nutrition analysis) -----------------------------------------
+# Weights are NOT vendored: ~200 MB downloads from Hugging Face on the first
+# /api/nutrition/predict call and is then cached in ~/.cache/huggingface.
+# module4/requirements.txt pins `--extra-index-url .../whl/cpu`; that is
+# deliberately NOT copied here, so torch resolves the same way it does for
+# Modules 1 and 2 rather than being forced to the CPU-only wheel.
+torchvision>=0.17
+timm>=1.0
+transformers>=4.45
+huggingface_hub>=0.23
+pillow>=10.0
+python-dotenv>=1.0
