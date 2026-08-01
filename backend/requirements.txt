@@ -1,0 +1,29 @@
+# backend/requirements.txt — hand-curated union of module1's and module2's
+# actual runtime dependencies (not a concatenation of both files: module1's
+# requirements.txt is UTF-16-encoded and pins training-time extras — jax,
+# scikit-learn, seaborn — that are not imported anywhere in the runtime path
+# this backend drives).
+#
+# REQUIRES PYTHON 3.10+. Module 2's source uses `X | None` union-type syntax
+# (PEP 604) in live function signatures, evaluated eagerly — it will not
+# import on 3.9. Both modules run fine standalone on their own documented
+# versions; this backend imports Module 2's src/config directly (unmodified),
+# so it inherits Module 2's floor. Verified working on Python 3.12.10.
+#
+# Versions below are what was verified working (pip install, no pins beyond
+# what's listed) — loosen/tighten as needed for your environment.
+
+fastapi>=0.140
+starlette>=1.0
+uvicorn[standard]>=0.50
+websockets>=17.0
+python-multipart>=0.0.20
+
+mediapipe==0.10.14
+opencv-python==4.13.0.92
+torch>=2.8
+numpy>=2.0
+pandas>=2.2
+matplotlib>=3.9
+sounddevice>=0.5
+soundfile>=0.12
