@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NutriIngredientNet — Nutrition Analyser</title>
+<meta name="description" content="Analyse food photos for itemised, energy-consistent nutrition using NutriIngredientNet v6.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+
+:root{
+  --bg:#0b0f14;
+  --surface:rgba(255,255,255,.04);
+  --border:rgba(255,255,255,.08);
+  --text:#e8f0ec;
+  --muted:#7a9080;
+  --green:#28c76f;
+  --amber:#f4b942;
+  --red:#f46060;
+  --blue:#5e9bff;
+  --r:16px;
+}
+
+html{scroll-behavior:smooth}
+body{
+  font-family:'Inter',system-ui,sans-serif;
+  background:var(--bg);
+  color:var(--text);
+  min-height:100vh;
+}
+
+/* background glows */
+body::before{
+  content:'';position:fixed;inset:0;z-index:-1;
+  background:
+    radial-gradient(ellipse 60% 40% at 20% 10%,rgba(40,199,111,.12) 0%,transparent 70%),
+    radial-gradient(ellipse 50% 40% at 80% 80%,rgba(94,155,255,.10) 0%,transparent 70%),
+    var(--bg);
+}
+
+.wrap{max-width:860px;margin:0 auto;padding:2.5rem 1.25rem 5rem}
+
+/* ── header ── */
+header{text-align:center;margin-bottom:2.5rem}
+.badge{
+  display:inline-flex;align-items:center;gap:.4rem;
+  background:rgba(40,199,111,.12);border:1px solid rgba(40,199,111,.3);
+  border-radius:999px;padding:.28rem .9rem;
+  font-size:.72rem;font-weight:600;letter-spacing:.08em;
+  color:var(--green);text-transform:uppercase;margin-bottom:1rem;
+}
+.badge-dot{width:6px;height:6px;border-radius:50%;background:var(--green);animation:pulse 2s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(.85)}}
+h1{
+  font-size:clamp(1.8rem,4vw,2.6rem);font-weight:800;letter-spacing:-.02em;
+  background:linear-gradient(135deg,#e8f0ec 30%,var(--green));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+  line-height:1.2;margin-bottom:.75rem;
+}
+.subtitle{color:var(--muted);font-size:.95rem;max-width:520px;margin:0 auto;line-height:1.65}
+
+/* ── card ── */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);backdrop-filter:blur(12px)}
+
+/* ── drop zone ── */
+#drop{
+  border:2px dashed rgba(255,255,255,.15);border-radius:var(--r);
+  padding:3rem 2rem;text-align:center;cursor:pointer;margin-bottom:1.5rem;
+  transition:border-color .25s,background .25s,transform .2s;
+}
+#drop:hover,#drop.hover{border-color:rgba(40,199,111,.55);background:rgba(40,199,111,.05);transform:translateY(-2px)}
+.drop-icon{font-size:2.8rem;line-height:1;margin-bottom:.75rem;filter:drop-shadow(0 0 16px rgba(40,199,111,.4))}
+.drop-title{font-size:1.05rem;font-weight:600;margin-bottom:.3rem}
+.drop-sub{font-size:.82rem;color:var(--muted)}
+
+/* ── preview ── */
+#preview-wrap{
+  position:relative;margin-bottom:1.5rem;border-radius:var(--r);
+  overflow:hidden;border:1px solid var(--border);box-shadow:0 8px 40px rgba(0,0,0,.45);
+}
+#preview-wrap::after{
+  content:'';position:absolute;inset:0;
+  background:linear-gradient(to top,rgba(11,15,20,.8) 0%,transparent 50%);
+  pointer-events:none;
+}
+#preview{width:100%;max-height:340px;object-fit:cover;display:block;border-radius:var(--r)}
+.preview-label{position:absolute;bottom:1rem;left:1rem;z-index:1;font-size:.78rem;color:rgba(255,255,255,.65)}
+.change-btn{
+  position:absolute;bottom:1rem;right:1rem;z-index:1;
+  background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.15);
+  color:var(--text);border-radius:8px;padding:.35rem .75rem;
+  font-size:.78rem;cursor:pointer;transition:background .2s;font-family:inherit;
+}
+.change-btn:hover{background:rgba(255,255,255,.2)}
+
+/* ── status bar ── */
+#status{text-align:center;font-size:.9rem;color:var(--muted);margin-bottom:1rem;min-height:1.4rem}
+.err{color:var(--red)}
+.spinner{display:inline-block;width:16px;height:16px;border:2px solid rgba(40,199,111,.2);
+  border-top-color:var(--green);border-radius:50%;animation:spin .7s linear infinite;vertical-align:middle;margin-right:.4rem}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* ── loading overlay ── */
+#overlay{
+  position:fixed;inset:0;z-index:200;
+  background:rgba(11,15,20,.85);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
+  display:flex;align-items:center;justify-content:center;
+  opacity:0;pointer-events:none;transition:opacity .3s;
+}
+#overlay.on{opacity:1;pointer-events:all}
+.ov-card{
+  background:rgba(19,25,32,.98);border:1px solid rgba(255,255,255,.1);
+  border-radius:20px;padding:2.2rem 2.8rem;min-width:300px;text-align:center;
+  box-shadow:0 24px 64px rgba(0,0,0,.6);
+  transform:translateY(12px);transition:transform .3s;
+}
+#overlay.on .ov-card{transform:translateY(0)}
+
+.ring{
+  width:64px;height:64px;border-radius:50%;
+  border:3px solid rgba(40,199,111,.15);
+  border-top-color:var(--green);border-right-color:rgba(40,199,111,.45);
+  animation:spin .9s linear infinite;margin:0 auto 1.2rem;
+}
+.ov-title{font-size:1.05rem;font-weight:700;margin-bottom:.3rem}
+.ov-sub{font-size:.82rem;color:var(--muted);margin-bottom:1.4rem;min-height:1.2em}
+
+.steps{display:flex;flex-direction:column;gap:.5rem;text-align:left}
+.step{display:flex;align-items:center;gap:.6rem;font-size:.82rem;color:var(--muted);transition:color .3s}
+.step.active{color:var(--text);font-weight:500}
+.step.done{color:var(--green)}
+.si{
+  width:20px;height:20px;border-radius:50%;flex-shrink:0;
+  border:2px solid rgba(255,255,255,.12);
+  display:flex;align-items:center;justify-content:center;font-size:.64rem;
+  transition:all .25s;
+}
+.step.active .si{border-color:var(--green);background:rgba(40,199,111,.12);animation:pulse2 1.2s ease-in-out infinite}
+.step.done .si{border-color:var(--green);background:var(--green);color:#fff}
+@keyframes pulse2{0%,100%{box-shadow:0 0 0 0 rgba(40,199,111,.4)}50%{box-shadow:0 0 0 5px rgba(40,199,111,0)}}
+.elapsed{margin-top:1rem;font-size:.72rem;color:rgba(122,144,128,.5);font-variant-numeric:tabular-nums}
+
+/* ── results ── */
+.section-label{
+  font-size:.7rem;font-weight:700;letter-spacing:.1em;
+  text-transform:uppercase;color:var(--muted);
+  margin-bottom:.75rem;padding-left:.1rem;
+}
+
+/* macro grid */
+.macros-grid{display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:.75rem}
+@media(min-width:540px){.macros-grid{grid-template-columns:repeat(4,1fr)}}
+
+.mc{
+  padding:1.1rem 1rem;border-radius:12px;text-align:center;
+  transition:transform .2s;cursor:default;
+}
+.mc:hover{transform:translateY(-3px)}
+.mc.cal{background:rgba(244,185,66,.08);border:1px solid rgba(244,185,66,.18)}
+.mc.fat{background:rgba(244,96,96,.08);border:1px solid rgba(244,96,96,.18)}
+.mc.carb{background:rgba(94,155,255,.08);border:1px solid rgba(94,155,255,.18)}
+.mc.prot{background:rgba(40,199,111,.08);border:1px solid rgba(40,199,111,.18)}
+.mc-val{font-size:1.95rem;font-weight:800;letter-spacing:-.03em;line-height:1;margin-bottom:.15rem}
+.mc-unit{font-size:.75rem;opacity:.6}
+.mc-label{font-size:.72rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase;margin-top:.2rem}
+.mc.cal .mc-val,.mc.cal .mc-label{color:var(--amber)}
+.mc.fat .mc-val,.mc.fat .mc-label{color:var(--red)}
+.mc.carb .mc-val,.mc.carb .mc-label{color:var(--blue)}
+.mc.prot .mc-val,.mc.prot .mc-label{color:var(--green)}
+
+/* meta row */
+.meta{
+  display:flex;flex-wrap:wrap;gap:.5rem;align-items:center;
+  padding:.75rem 1rem;border-radius:10px;margin-bottom:1.5rem;
+  background:rgba(255,255,255,.03);border:1px solid var(--border);
+  font-size:.82rem;color:var(--muted);
+}
+.meta strong{color:var(--text)}
+.atw{
+  margin-left:auto;
+  display:inline-flex;align-items:center;gap:.3rem;
+  background:rgba(40,199,111,.12);border:1px solid rgba(40,199,111,.25);
+  border-radius:999px;padding:.18rem .7rem;
+  font-size:.72rem;font-weight:600;color:var(--green);
+}
+
+/* table */
+.tbl-wrap{border-radius:12px;border:1px solid var(--border);overflow:hidden;margin-bottom:1.5rem}
+table{width:100%;border-collapse:collapse;font-size:.855rem}
+thead tr{background:rgba(255,255,255,.04);border-bottom:1px solid var(--border)}
+th{padding:.65rem .8rem;font-size:.7rem;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--muted)}
+th:not(:first-child){text-align:right}
+tbody tr{border-bottom:1px solid rgba(255,255,255,.04);transition:background .15s}
+tbody tr:last-child{border-bottom:none}
+tbody tr:hover{background:rgba(255,255,255,.03)}
+td{padding:.65rem .8rem;vertical-align:middle}
+td:not(:first-child){text-align:right;font-variant-numeric:tabular-nums;color:var(--muted)}
+td:nth-child(3){color:var(--text);font-weight:600}
+tbody tr.poss td{opacity:.72}
+
+.iname{display:flex;align-items:center;gap:.5rem;font-weight:500}
+.pill{
+  display:inline-block;font-size:.64rem;font-weight:700;letter-spacing:.05em;
+  padding:.12rem .5rem;border-radius:999px;flex-shrink:0;text-transform:uppercase;
+}
+.pill.cert{background:rgba(40,199,111,.15);color:var(--green);border:1px solid rgba(40,199,111,.3)}
+.pill.poss{background:rgba(244,185,66,.12);color:var(--amber);border:1px solid rgba(244,185,66,.25)}
+
+/* warning */
+.warn{
+  padding:.8rem 1rem;border-radius:10px;
+  background:rgba(244,185,66,.06);border:1px solid rgba(244,185,66,.2);
+  font-size:.8rem;color:rgba(244,185,66,.85);line-height:1.6;margin-bottom:.75rem;
+}
+.acc{font-size:.78rem;color:var(--muted);text-align:center;margin-bottom:1.5rem}
+
+footer{text-align:center;margin-top:3rem;font-size:.75rem;color:rgba(122,144,128,.4)}
+
+/* animations */
+@keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+.au{animation:fadeUp .4s ease both}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div class="badge"><span class="badge-dot"></span>AI Nutrition Analysis</div>
+    <h1>NutriIngredientNet</h1>
+    <p class="subtitle">Itemised, energy-consistent nutrition from a single overhead food photo. Totals guaranteed exact by Atwater construction.</p>
+  </header>
+
+  <!-- Drop zone -->
+  <div id="drop">
+    <div class="drop-icon">🥗</div>
+    <div class="drop-title">Drop a food photo here</div>
+    <div class="drop-sub">or click to browse — JPG, PNG, WebP up to 15 MB</div>
+    <input type="file" id="file-input" accept="image/*" hidden>
+  </div>
+
+  <!-- Preview (hidden until upload) -->
+  <div id="preview-wrap" style="display:none">
+    <img id="preview" alt="Food photo preview">
+    <div class="preview-label">📷 Uploaded image</div>
+    <button class="change-btn" id="change-btn">Change photo</button>
+  </div>
+
+  <!-- Status -->
+  <div id="status"></div>
+
+  <!-- Results (hidden until analysis done) -->
+  <div id="results" style="display:none">
+
+    <div id="totals-section">
+      <p class="section-label">Nutritional totals</p>
+      <div class="macros-grid" id="macros-grid"></div>
+      <div class="meta" id="meta-row"></div>
+    </div>
+
+    <div id="ingredients-section">
+      <p class="section-label">Ingredient breakdown</p>
+      <div class="tbl-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Ingredient</th>
+              <th>Grams</th>
+              <th>kcal</th>
+              <th>Fat g</th>
+              <th>Carb g</th>
+              <th>Prot g</th>
+            </tr>
+          </thead>
+          <tbody id="ing-body"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div id="warn-box" class="warn"></div>
+    <div id="acc-box" class="acc"></div>
+
+  </div><!-- /results -->
+
+  <footer>NutriIngredientNet v6 &nbsp;·&nbsp; Research demo — not medical or dietary advice</footer>
+</div>
+
+<!-- Loading overlay -->
+<div id="overlay">
+  <div class="ov-card">
+    <div class="ring"></div>
+    <div class="ov-title">Analysing your photo</div>
+    <div class="ov-sub" id="ov-sub">Preparing…</div>
+    <div class="steps">
+      <div class="step" id="s1"><div class="si">1</div>Uploading image</div>
+      <div class="step" id="s2"><div class="si">2</div>Running AI inference</div>
+      <div class="step" id="s3"><div class="si">3</div>Building results</div>
+    </div>
+    <div class="elapsed" id="elapsed">0.0 s</div>
+  </div>
+</div>
+
+<script>
+// API base URL — same origin as this page (served by FastAPI)
+const API = window.location.origin;
+const drop      = document.getElementById('drop');
+const fileInput = document.getElementById('file-input');
+const prevWrap  = document.getElementById('preview-wrap');
+const preview   = document.getElementById('preview');
+const changeBtn = document.getElementById('change-btn');
+const statusEl  = document.getElementById('status');
+const resultsEl = document.getElementById('results');
+const overlay   = document.getElementById('overlay');
+
+// ── drag & drop ──────────────────────────────────────────────────
+drop.addEventListener('click', () => fileInput.click());
+changeBtn.addEventListener('click', () => fileInput.click());
+['dragover','dragenter'].forEach(e =>
+  drop.addEventListener(e, ev => { ev.preventDefault(); drop.classList.add('hover'); }));
+['dragleave','drop'].forEach(e =>
+  drop.addEventListener(e, ev => { ev.preventDefault(); drop.classList.remove('hover'); }));
+drop.addEventListener('drop', ev => {
+  const f = ev.dataTransfer.files[0];
+  if (f) run(f);
+});
+fileInput.addEventListener('change', () => {
+  if (fileInput.files[0]) run(fileInput.files[0]);
+});
+
+// ── overlay helpers ───────────────────────────────────────────────
+let timer = null;
+
+function stepSet(id, state) {
+  const el = document.getElementById(id);
+  el.classList.remove('active','done');
+  if (state) el.classList.add(state);
+  el.querySelector('.si').textContent = state === 'done' ? '✓' : el.querySelector('.si').textContent;
+}
+
+function showOverlay(msg) {
+  document.getElementById('ov-sub').textContent = msg;
+  overlay.classList.add('on');
+  document.body.style.overflow = 'hidden';
+  const t0 = Date.now();
+  timer = setInterval(() => {
+    document.getElementById('elapsed').textContent =
+      ((Date.now() - t0) / 1000).toFixed(1) + ' s';
+  }, 100);
+}
+
+function hideOverlay() {
+  overlay.classList.remove('on');
+  document.body.style.overflow = '';
+  clearInterval(timer);
+}
+
+function setStatus(html) { statusEl.innerHTML = html; }
+function setError(msg) {
+  hideOverlay();
+  setStatus(`<span class="err">⚠️ ${msg}</span>`);
+}
+
+// ── count-up ──────────────────────────────────────────────────────
+function countUp(el, target, ms = 700) {
+  const t0 = performance.now();
+  const step = now => {
+    const p    = Math.min((now - t0) / ms, 1);
+    const ease = 1 - Math.pow(1 - p, 3);
+    const v    = target * ease;
+    el.textContent = Number.isInteger(target) ? Math.round(v) : v.toFixed(1);
+    if (p < 1) requestAnimationFrame(step);
+  };
+  requestAnimationFrame(step);
+}
+
+async function run(file) {
+
+  // Show preview, hide drop zone, hide old results
+  preview.src = URL.createObjectURL(file);
+  prevWrap.style.display = 'block';
+  drop.style.display     = 'none';
+  resultsEl.style.display = 'none';
+  setStatus('');
+
+  // Start overlay
+  ['s1','s2','s3'].forEach(id => stepSet(id, ''));
+  showOverlay('Sending image to API…');
+  stepSet('s1', 'active');
+
+  const fd = new FormData();
+  fd.append('file', file);
+
+  // ── fetch ─────────────────────────────────────────────────────
+  let response;
+  try {
+    response = await fetch(API + '/predict', { method: 'POST', body: fd });
+  } catch (err) {
+    setError(`Cannot reach API at <code>${API}</code> — is the server running?`);
+    return;
+  }
+
+  stepSet('s1', 'done');
+
+  if (!response.ok) {
+    const txt = await response.text().catch(() => response.statusText);
+    setError(`API error ${response.status}: ${txt}`);
+    return;
+  }
+
+  // ── parse ─────────────────────────────────────────────────────
+  stepSet('s2', 'active');
+  document.getElementById('ov-sub').textContent = 'Parsing model output…';
+  let data;
+  try {
+    data = await response.json();
+  } catch (err) {
+    setError('Failed to parse API response: ' + err.message);
+    return;
+  }
+  stepSet('s2', 'done');
+
+  // ── render ────────────────────────────────────────────────────
+  stepSet('s3', 'active');
+  document.getElementById('ov-sub').textContent = 'Building results…';
+  render(data);
+  stepSet('s3', 'done');
+
+  await new Promise(r => setTimeout(r, 350));
+  hideOverlay();
+}
+
+// ── render ────────────────────────────────────────────────────────
+function render(d) {
+  const t = d.totals;
+
+  // macro cards
+  const macros = [
+    { cls:'cal',  val: t.calories,   unit:'kcal', label:'Calories' },
+    { cls:'fat',  val: t.fat_g,      unit:'g',    label:'Fat' },
+    { cls:'carb', val: t.carbs_g,    unit:'g',    label:'Carbs' },
+    { cls:'prot', val: t.protein_g,  unit:'g',    label:'Protein' },
+  ];
+  const grid = document.getElementById('macros-grid');
+  grid.innerHTML = macros.map(m => `
+    <div class="mc ${m.cls} au">
+      <div class="mc-val" id="mv-${m.cls}">0</div>
+      <div class="mc-unit">${m.unit}</div>
+      <div class="mc-label">${m.label}</div>
+    </div>`).join('');
+  macros.forEach(m => countUp(document.getElementById('mv-' + m.cls), m.val));
+
+  // meta row
+  const atw = d.atwater_check;
+  document.getElementById('meta-row').innerHTML =
+    `<span>Total mass <strong>${t.mass_g} g</strong></span>
+     <span style="opacity:.3;margin:0 .3rem">|</span>
+     <span>Kcal check: ${atw.from_macros}</span>
+     <span class="atw" style="margin-left:auto">${atw.consistent ? '✓ Atwater exact' : '⚠ Mismatch'}</span>`;
+
+  // ingredients table
+  document.getElementById('ing-body').innerHTML = d.ingredients.map((i, idx) => `
+    <tr class="${i.status === 'possible' ? 'poss' : ''}" style="animation:fadeUp .35s ease ${idx*40}ms both">
+      <td><div class="iname">
+        ${i.name}
+        <span class="pill ${i.status === 'certain' ? 'cert' : 'poss'}">${i.status}</span>
+      </div></td>
+      <td>${i.grams}</td>
+      <td>${i.kcal}</td>
+      <td>${i.fat}</td>
+      <td>${i.carb}</td>
+      <td>${i.protein}</td>
+    </tr>`).join('');
+
+  // warning & accuracy
+  document.getElementById('warn-box').textContent = '⚠ ' + d.warning;
+  document.getElementById('acc-box').innerHTML =
+    `Typical error on Nutrition5k test split: ±${d.accuracy.test_kcal_mae} kcal (${d.accuracy.test_kcal_mae_pct}%). ${d.accuracy.note}`;
+
+  // SHOW results
+  resultsEl.style.display = 'block';
+}
+</script>
+</body>
+</html>

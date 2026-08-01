@@ -5,6 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Virtual Gym Coach</title>
 <link rel="stylesheet" href="/static/style.css">
+<!-- .tabs lives in nutrition.css, which both pages share for the nav. -->
+<link rel="stylesheet" href="/static/nutrition.css">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><text y='26' font-size='26'>%F0%9F%8F%8B</text></svg>">
 </head>
 <body>
@@ -17,13 +19,24 @@
       <p>Upload a video &middot; exercise recognition and form correction run together, live</p>
     </div>
   </div>
-  <button id="new-analysis" class="ghost-btn" hidden>New analysis</button>
+  <div class="topbar-actions">
+    <nav class="tabs" aria-label="Sections">
+      <a class="tab active" href="/" aria-current="page">Workout analysis</a>
+      <a class="tab" href="/nutrition">Nutrition</a>
+    </nav>
+    <button id="new-analysis" class="ghost-btn" hidden>New analysis</button>
+  </div>
 </header>
 
 <main>
 
 <!-- ══════════════════════════════════ UPLOAD ══════════════════════════════ -->
-<section id="view-upload" class="view">
+<!--
+  Two columns: the Module 1 + Module 2 workout flow on the left (unchanged),
+  and Module 4's entry card on the right. Module 4 is a separate tool, not a
+  step in the workout pipeline, so it sits beside that flow rather than in it.
+-->
+<section id="view-upload" class="view landing">
   <form id="upload-form" novalidate>
     <fieldset class="panel">
       <legend>1 &nbsp;Upload the video</legend>
@@ -61,6 +74,36 @@
       Analyse video
     </button>
   </form>
+
+  <!-- Module 4 lives on its own page — a separate tool, not part of the
+       workout pipeline. This card is the way in from the landing page. -->
+  <aside class="landing-aside">
+    <a class="feature-card" href="/nutrition">
+      <span class="feature-glow" aria-hidden="true"></span>
+
+      <span class="feature-head">
+        <span class="feature-icon" aria-hidden="true">🥗</span>
+        <span class="feature-tag">Module 4</span>
+      </span>
+
+      <span class="feature-title">Nutrition analysis</span>
+      <span class="feature-desc">
+        Calories, macros and a full ingredient breakdown — estimated from a
+        single photo of your meal.
+      </span>
+
+      <ul class="feature-list">
+        <li>Dish totals: calories, fat, carbs, protein</li>
+        <li>Per-ingredient grams and energy</li>
+        <li>Energy-consistent by Atwater construction</li>
+      </ul>
+
+      <span class="feature-cta">
+        Open nutrition analysis
+        <span class="feature-go" aria-hidden="true">→</span>
+      </span>
+    </a>
+  </aside>
 </section>
 
 <!-- ═════════════════════════════ SESSION (live → review) ══════════════════ -->
