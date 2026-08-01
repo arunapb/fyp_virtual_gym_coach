@@ -1,0 +1,490 @@
+/* ==========================================================================
+   Virtual Gym Coach — merged web UI
+
+   This is module2/frontend/style.css (Module 2's dashboard styling) with one
+   addition at the end: the Module 1 readout panel. Reused verbatim rather
+   than rewritten, since Module 2's dashboard (canvas, zone strip, charts,
+   rep table, cue log) is unchanged in the merge — only the upload step and
+   the new Module 1 panel are new.
+
+   Deliberately dark-only.  This is a video-review tool: the annotated frame is
+   the brightest thing on screen and a dark surround keeps the eye on it, the
+   same reason editing and analysis software commits to dark.  A light theme
+   would put a bright page around a dark video and fight it.
+
+   Colour roles below are the validated dark-mode instance of the data-viz
+   palette (categorical slots 1-2, status ramp), except the three ZONE colours,
+   which are converted straight from `zones.get_zone_color` so a chip in the
+   browser is the exact colour of the aura burned into the video beside it.
+   Every zone colour is always paired with its word (GOOD / WARNING / HIGH
+   RISK), so the state never rests on hue alone.
+   ========================================================================== */
+
+:root {
+  color-scheme: dark;
+
+  --page:            #0d0e10;
+  --surface-1:       #16171a;
+  --surface-2:       #1e2024;
+  --surface-3:       #26282d;
+  --border:          rgba(255, 255, 255, 0.10);
+  --border-strong:   rgba(255, 255, 255, 0.18);
+
+  --text-primary:    #ffffff;
+  --text-secondary:  #c3c2b7;
+  --text-muted:      #898781;
+
+  --series-1:        #3987e5;   /* categorical slot 1 — left side  */
+  --series-2:        #d95926;   /* categorical slot 2 — right side */
+  --accent:          #3987e5;
+
+  --status-good:     #0ca30c;
+  --status-warning:  #fab219;
+  --status-critical: #d03b3b;
+
+  /* zones.get_zone_color(), BGR -> RGB */
+  --zone-green:      #78ff00;
+  --zone-yellow:     #ffdc00;
+  --zone-red:        #ff5050;
+
+  --grid:            #2c2c2a;
+  --radius:          10px;
+  --radius-lg:       14px;
+
+  --font: system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: ui-monospace, "Cascadia Mono", "Consolas", monospace;
+}
+
+* { box-sizing: border-box; }
+
+/* The `hidden` attribute is how this UI switches views, but the browser applies
+   it as a UA-level `display: none` that ANY author `display` rule overrides —
+   and several elements here are flex containers.  Without this, hiding a view
+   silently does nothing and every panel renders at once. */
+[hidden] { display: none !important; }
+
+html, body {
+  margin: 0;
+  background: var(--page);
+  color: var(--text-primary);
+  font-family: var(--font);
+  font-size: 15px;
+  line-height: 1.5;
+}
+
+h1, h2, h3 { margin: 0; font-weight: 600; letter-spacing: -0.01em; }
+h1 { font-size: 1.15rem; }
+h2 { font-size: 1rem; margin-bottom: 0.15rem; }
+p  { margin: 0; }
+code { font-family: var(--mono); font-size: 0.86em; color: var(--text-secondary); }
+
+.hint { color: var(--text-muted); font-size: 0.85rem; }
+.error { color: var(--status-critical); font-size: 0.9rem; }
+
+/* ── Top bar ─────────────────────────────────────────────────────────────── */
+.topbar {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 1rem; padding: 0.85rem 1.5rem;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface-1);
+  position: sticky; top: 0; z-index: 20;
+}
+.brand { display: flex; align-items: center; gap: 0.8rem; }
+.brand p { color: var(--text-muted); font-size: 0.8rem; }
+.brand-mark {
+  width: 30px; height: 30px; border-radius: 9px; flex: none;
+  background: linear-gradient(140deg, var(--series-1), #1baf7a);
+}
+
+main { max-width: 1500px; margin: 0 auto; padding: 1.5rem; }
+.view { display: flex; flex-direction: column; gap: 1.1rem; }
+
+/* ── Panels ──────────────────────────────────────────────────────────────── */
+.panel {
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 1.1rem 1.25rem;
+  margin: 0;
+}
+fieldset.panel { border: 1px solid var(--border); }
+legend {
+  padding: 0 0.5rem; margin-left: -0.5rem;
+  font-weight: 600; font-size: 0.95rem; color: var(--text-primary);
+}
+
+/* ── Upload ──────────────────────────────────────────────────────────────── */
+#upload-form { display: flex; flex-direction: column; gap: 1.1rem; max-width: 780px; }
+
+.exercise-grid {
+  display: grid; gap: 0.7rem; margin-top: 0.8rem;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+}
+.exercise-option {
+  display: block; cursor: pointer;
+  border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 0.8rem 0.9rem; background: var(--surface-2);
+  transition: border-color 0.12s, background 0.12s;
+}
+.exercise-option:hover { border-color: var(--border-strong); }
+.exercise-option input { position: absolute; opacity: 0; pointer-events: none; }
+.exercise-option:has(input:checked) {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 14%, var(--surface-2));
+}
+.exercise-option:has(input:focus-visible) { outline: 2px solid var(--accent); outline-offset: 2px; }
+.exercise-name { display: block; font-weight: 600; }
+.exercise-cal { display: block; color: var(--text-muted); font-size: 0.8rem; margin-top: 0.2rem; }
+
+.dropzone {
+  margin-top: 0.8rem; padding: 2.2rem 1rem; text-align: center; cursor: pointer;
+  border: 1.5px dashed var(--border-strong); border-radius: var(--radius);
+  background: var(--surface-2); color: var(--text-secondary);
+  transition: border-color 0.12s, background 0.12s;
+}
+.dropzone:hover, .dropzone.dragover {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 10%, var(--surface-2));
+}
+.dropzone:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.drop-icon { width: 34px; height: 34px; color: var(--text-muted); }
+.drop-title { font-weight: 500; margin: 0.4rem 0 0.25rem; color: var(--text-primary); }
+
+.chosen {
+  display: flex; align-items: center; gap: 0.7rem; margin-top: 0.7rem;
+  padding: 0.6rem 0.8rem; border-radius: var(--radius);
+  background: var(--surface-2); border: 1px solid var(--border);
+}
+.chosen-name { font-weight: 500; overflow-wrap: anywhere; }
+.chosen-size { color: var(--text-muted); font-size: 0.85rem; margin-left: auto; white-space: nowrap; }
+
+.checklist { margin: 0.6rem 0 0; padding-left: 1.1rem; color: var(--text-secondary); font-size: 0.88rem; }
+.checklist li { margin-bottom: 0.3rem; }
+
+/* ── Buttons ─────────────────────────────────────────────────────────────── */
+.primary-btn, .ghost-btn, .icon-btn, .link-btn {
+  font: inherit; cursor: pointer; border-radius: 9px;
+  transition: background 0.12s, border-color 0.12s, opacity 0.12s;
+}
+.primary-btn {
+  align-self: flex-start; padding: 0.65rem 1.4rem; font-weight: 600;
+  border: none; background: var(--accent); color: #fff;
+}
+.primary-btn:hover:not(:disabled) { background: #2a78d6; }
+.primary-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.ghost-btn {
+  padding: 0.5rem 1rem; background: transparent; color: var(--text-secondary);
+  border: 1px solid var(--border-strong);
+}
+.ghost-btn:hover { background: var(--surface-2); color: var(--text-primary); }
+.link-btn {
+  background: none; border: none; color: var(--accent);
+  padding: 0; text-decoration: underline; font-size: 0.85rem;
+}
+.icon-btn {
+  width: 38px; height: 38px; display: grid; place-items: center; flex: none;
+  border: 1px solid var(--border-strong); background: var(--surface-2);
+  color: var(--text-primary);
+}
+.icon-btn:hover { background: var(--surface-3); }
+.icon-btn svg { width: 20px; height: 20px; fill: currentColor; }
+
+/* ── Progress ────────────────────────────────────────────────────────────── */
+.progress-panel { max-width: 620px; display: flex; flex-direction: column; gap: 0.75rem; }
+.progress-track {
+  height: 8px; border-radius: 99px; background: var(--surface-3); overflow: hidden;
+}
+.progress-fill {
+  height: 100%; width: 0%; border-radius: 99px;
+  background: var(--accent); transition: width 0.25s ease;
+}
+.progress-meta { font-variant-numeric: tabular-nums; color: var(--text-secondary); font-size: 0.9rem; }
+
+/* ── Results layout ──────────────────────────────────────────────────────── */
+.results-top {
+  display: grid; gap: 1.1rem;
+  grid-template-columns: minmax(0, 1.7fr) minmax(310px, 1fr);
+  align-items: start;
+}
+@media (max-width: 1080px) { .results-top { grid-template-columns: 1fr; } }
+
+.video-card, .live-card {
+  background: var(--surface-1); border: 1px solid var(--border);
+  border-radius: var(--radius-lg); padding: 0.9rem; overflow: hidden;
+}
+.live-card { display: flex; flex-direction: column; gap: 0.75rem; }
+
+.video-shell {
+  background: #000; border-radius: var(--radius); overflow: hidden;
+  display: grid; place-items: center; position: relative; min-height: 220px;
+}
+/* The canvas and the video occupy the same cell — the canvas shows the frames
+   as they are analysed, the video replaces it for review — so the panel does
+   not jump when one is swapped for the other. */
+#player, #live-canvas {
+  grid-area: 1 / 1; width: 100%; max-height: 62vh; display: block;
+  object-fit: contain;
+}
+#live-canvas { height: auto; }
+.shell-placeholder {
+  grid-area: 1 / 1; color: var(--text-muted); font-size: 0.88rem;
+  padding: 3rem 1rem; text-align: center;
+}
+
+.live-badge {
+  position: absolute; top: 0.6rem; left: 0.6rem; z-index: 2;
+  display: inline-flex; align-items: center; gap: 0.4rem;
+  font-size: 0.72rem; font-weight: 600; letter-spacing: 0.04em;
+  text-transform: uppercase; color: #fff;
+  background: color-mix(in srgb, #000 55%, transparent);
+  border: 1px solid color-mix(in srgb, #fff 22%, transparent);
+  border-radius: 99px; padding: 0.2rem 0.65rem;
+}
+.live-dot {
+  width: 7px; height: 7px; border-radius: 50%; background: var(--zone-red);
+  animation: live-pulse 1.4s ease-in-out infinite;
+}
+@keyframes live-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.25; } }
+/* Users who have asked for less motion get the indicator without the pulse —
+   it identifies the state by colour and text on its own. */
+@media (prefers-reduced-motion: reduce) { .live-dot { animation: none; } }
+
+.transport {
+  display: flex; align-items: center; gap: 0.8rem;
+  padding: 0.7rem 0.15rem 0.3rem; flex-wrap: wrap;
+}
+#live-transport .progress-track { flex: 1 1 180px; min-width: 140px; }
+.ghost-btn.small { padding: 0.32rem 0.8rem; font-size: 0.82rem; }
+
+/* ── Module-1 signal control (manual override, hidden by default) ─────────── */
+.signal-bar {
+  border: 1px dashed var(--border-strong); border-radius: var(--radius);
+  padding: 0.55rem 0.65rem; display: flex; flex-direction: column; gap: 0.45rem;
+}
+.signal-head {
+  font-size: 0.78rem; color: var(--text-secondary); font-weight: 600;
+  display: flex; gap: 0.5rem; align-items: baseline; flex-wrap: wrap;
+}
+.signal-head .fig-note { font-weight: 400; }
+.signal-buttons { display: flex; flex-wrap: wrap; gap: 0.35rem; }
+.signal-btn {
+  font: inherit; font-size: 0.78rem; cursor: pointer; border-radius: 99px;
+  padding: 0.24rem 0.7rem; background: var(--surface-2);
+  border: 1px solid var(--border-strong); color: var(--text-secondary);
+  transition: background 0.12s, border-color 0.12s, color 0.12s;
+}
+.signal-btn:hover { background: var(--surface-3); color: var(--text-primary); }
+.signal-btn.active {
+  background: color-mix(in srgb, var(--accent) 22%, var(--surface-2));
+  border-color: var(--accent); color: var(--text-primary); font-weight: 600;
+}
+.signal-btn.idle { font-style: italic; }
+
+.audio-row { padding: 0 0.15rem; }
+.time { font-variant-numeric: tabular-nums; color: var(--text-secondary); font-size: 0.9rem; }
+.spacer { flex: 1; }
+.toggle { display: inline-flex; align-items: center; gap: 0.4rem; font-size: 0.85rem; color: var(--text-secondary); cursor: pointer; }
+.toggle input { accent-color: var(--accent); width: 15px; height: 15px; }
+.badge {
+  font-size: 0.72rem; color: var(--text-muted); border: 1px solid var(--border);
+  border-radius: 99px; padding: 0.15rem 0.6rem; white-space: nowrap;
+}
+.badge.warn {
+  color: var(--status-warning);
+  border-color: color-mix(in srgb, var(--status-warning) 50%, transparent);
+}
+
+/* ── Zone strip ──────────────────────────────────────────────────────────── */
+.strip-figure { margin: 0.4rem 0 0; }
+.strip-figure figcaption {
+  font-size: 0.85rem; color: var(--text-secondary);
+  display: flex; gap: 0.6rem; align-items: baseline; flex-wrap: wrap;
+  margin-bottom: 0.35rem;
+}
+.fig-note { color: var(--text-muted); font-size: 0.78rem; }
+#zone-strip { width: 100%; display: block; cursor: pointer; }
+
+.legend { display: flex; flex-wrap: wrap; gap: 0.9rem; margin-top: 0.45rem; }
+.legend-item { display: inline-flex; align-items: center; gap: 0.35rem; font-size: 0.78rem; color: var(--text-secondary); }
+.legend-swatch { width: 10px; height: 10px; border-radius: 3px; flex: none; }
+.legend-line { width: 14px; height: 2px; border-radius: 2px; flex: none; }
+
+/* ── Live panel ──────────────────────────────────────────────────────────── */
+.overall {
+  border-radius: var(--radius); padding: 0.6rem 0.85rem;
+  font-weight: 600; letter-spacing: 0.01em; text-align: center;
+  border: 1px solid var(--border); background: var(--surface-2);
+}
+.overall[data-zone="green"]  { color: var(--zone-green);  border-color: color-mix(in srgb, var(--zone-green) 45%, transparent);  background: color-mix(in srgb, var(--zone-green) 12%, var(--surface-2)); }
+.overall[data-zone="yellow"] { color: var(--zone-yellow); border-color: color-mix(in srgb, var(--zone-yellow) 45%, transparent); background: color-mix(in srgb, var(--zone-yellow) 12%, var(--surface-2)); }
+.overall[data-zone="red"]    { color: var(--zone-red);    border-color: color-mix(in srgb, var(--zone-red) 45%, transparent);    background: color-mix(in srgb, var(--zone-red) 14%, var(--surface-2)); }
+
+.rep-badge {
+  display: flex; align-items: center; gap: 1rem;
+  background: var(--surface-2); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 0.75rem 0.9rem;
+}
+.rep-count { font-size: 2.4rem; font-weight: 650; line-height: 1; }
+.rep-label { color: var(--text-muted); font-size: 0.8rem; margin-left: 0.35rem; }
+.rep-side { margin-left: auto; text-align: right; display: flex; flex-direction: column; gap: 0.3rem; align-items: flex-end; }
+.phase-chip {
+  font-size: 0.78rem; font-weight: 600; letter-spacing: 0.04em;
+  padding: 0.15rem 0.55rem; border-radius: 99px;
+  border: 1px solid currentColor;
+}
+.last-rep { font-size: 0.78rem; color: var(--text-secondary); }
+
+.info-bar { display: flex; flex-direction: column; gap: 0.7rem; }
+.info-col {
+  display: flex; flex-direction: column; gap: 0.25rem;
+  padding: 0.6rem 0.75rem; border-radius: var(--radius);
+  background: var(--surface-2); border: 1px solid var(--border);
+}
+.info-cell {
+  font-family: var(--mono); font-size: 0.78rem; white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.cue-now {
+  display: flex; align-items: center; gap: 0.55rem;
+  padding: 0.55rem 0.8rem; border-radius: var(--radius);
+  background: color-mix(in srgb, var(--status-warning) 15%, var(--surface-2));
+  border: 1px solid color-mix(in srgb, var(--status-warning) 45%, transparent);
+  font-size: 0.88rem; font-weight: 500;
+}
+.cue-dot { width: 8px; height: 8px; border-radius: 99px; background: var(--status-warning); flex: none; }
+
+/* ── Stat tiles (end-of-run summary) ────────────────────────────────────── */
+.tiles {
+  display: grid; gap: 0.8rem;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+}
+.tile {
+  background: var(--surface-1); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 0.8rem 0.9rem;
+}
+.tile-label { color: var(--text-muted); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; }
+.tile-value { font-size: 1.6rem; font-weight: 600; line-height: 1.2; margin-top: 0.25rem; }
+.tile-note { color: var(--text-secondary); font-size: 0.78rem; margin-top: 0.15rem; }
+.tile-value.good     { color: var(--status-good); }
+.tile-value.warning  { color: var(--status-warning); }
+.tile-value.critical { color: var(--status-critical); }
+
+/* ── Tables / cue log ────────────────────────────────────────────────────── */
+.results-grid {
+  display: grid; gap: 1.1rem;
+  grid-template-columns: minmax(0, 1.6fr) minmax(280px, 1fr);
+}
+@media (max-width: 1080px) { .results-grid { grid-template-columns: 1fr; } }
+
+.table-scroll { overflow-x: auto; margin-top: 0.7rem; }
+table { border-collapse: collapse; width: 100%; font-size: 0.82rem; }
+th, td {
+  text-align: right; padding: 0.4rem 0.6rem; white-space: nowrap;
+  border-bottom: 1px solid var(--border); font-variant-numeric: tabular-nums;
+}
+th {
+  color: var(--text-muted); font-weight: 600; text-transform: uppercase;
+  font-size: 0.7rem; letter-spacing: 0.04em; position: sticky; top: 0;
+  background: var(--surface-1);
+}
+th:first-child, td:first-child { text-align: left; }
+tbody tr { cursor: pointer; }
+tbody tr:hover { background: var(--surface-2); }
+.q-green  { color: var(--zone-green); font-weight: 600; }
+.q-yellow { color: var(--zone-yellow); font-weight: 600; }
+.q-red    { color: var(--zone-red); font-weight: 600; }
+
+.cue-log { list-style: none; margin: 0.7rem 0 0; padding: 0; max-height: 340px; overflow-y: auto; }
+.cue-item {
+  display: flex; align-items: baseline; gap: 0.6rem; width: 100%;
+  padding: 0.45rem 0.55rem; border-radius: 8px;
+  background: none; border: none; color: inherit; font: inherit;
+  text-align: left; cursor: pointer;
+}
+.cue-item:hover { background: var(--surface-2); }
+.cue-time { font-variant-numeric: tabular-nums; color: var(--text-muted); font-size: 0.78rem; min-width: 3.2rem; }
+.cue-text { flex: 1; font-size: 0.86rem; }
+.cue-tag {
+  font-size: 0.66rem; text-transform: uppercase; letter-spacing: 0.05em;
+  padding: 0.1rem 0.4rem; border-radius: 5px; border: 1px solid currentColor;
+}
+.cue-tag.corrective    { color: var(--status-warning); }
+.cue-tag.system        { color: var(--series-1); }
+.cue-tag.encouragement { color: var(--status-good); }
+.empty { color: var(--text-muted); font-size: 0.86rem; padding: 0.6rem 0; }
+
+/* ── Charts ──────────────────────────────────────────────────────────────── */
+#charts { display: flex; flex-direction: column; gap: 1.4rem; margin-top: 0.9rem; }
+.chart-block { position: relative; }
+.chart-head { display: flex; align-items: baseline; gap: 0.6rem; flex-wrap: wrap; margin-bottom: 0.35rem; }
+.chart-title { font-size: 0.9rem; font-weight: 600; }
+.chart-unit { color: var(--text-muted); font-size: 0.78rem; }
+.chart-note { color: var(--text-muted); font-size: 0.74rem; margin-left: auto; }
+.chart-canvas { width: 100%; display: block; cursor: crosshair; }
+.chart-tooltip {
+  position: absolute; pointer-events: none; z-index: 5;
+  background: var(--surface-3); border: 1px solid var(--border-strong);
+  border-radius: 8px; padding: 0.4rem 0.6rem; font-size: 0.76rem;
+  white-space: nowrap; box-shadow: 0 6px 20px rgba(0, 0, 0, 0.45);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Downloads ───────────────────────────────────────────────────────────── */
+.downloads { display: flex; flex-wrap: wrap; gap: 0.6rem; margin-top: 0.8rem; }
+.download-link {
+  display: inline-flex; align-items: center; gap: 0.45rem;
+  padding: 0.5rem 0.85rem; border-radius: 9px; text-decoration: none;
+  background: var(--surface-2); border: 1px solid var(--border-strong);
+  color: var(--text-primary); font-size: 0.85rem;
+}
+.download-link:hover { background: var(--surface-3); }
+.download-link span { color: var(--text-muted); font-size: 0.78rem; }
+
+/* ── Module 1 panel ──────────────────────────────────────────────────────────
+   New for the merge. Namespaced `m1-*` rather than reusing `.tile`/`.tile-value`
+   above (those style the end-of-run summary tiles, a different look — a bigger
+   single number, no probability bars) so the two never collide. Ported from
+   module1/frontend/style.css's tile/probability-bar styling, restyled to this
+   page's dark palette and variables. */
+.m1-panel {
+  border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 0.65rem 0.75rem; display: flex; flex-direction: column; gap: 0.6rem;
+  background: var(--surface-2);
+}
+
+.m1-tile-row { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+.m1-tile {
+  flex: 1 1 0; min-width: 84px;
+  background: var(--surface-1); border: 1px solid var(--border);
+  border-radius: 8px; padding: 0.5rem 0.6rem;
+  display: flex; flex-direction: column; gap: 0.2rem;
+}
+.m1-tile-label {
+  color: var(--text-muted); font-size: 0.68rem;
+  text-transform: uppercase; letter-spacing: 0.04em;
+}
+.m1-tile-value { font-size: 1.05rem; font-weight: 600; color: var(--text-primary); }
+.m1-tile-value.state-active { color: var(--status-good); }
+.m1-tile-value.state-rest   { color: var(--status-warning); }
+.m1-tile-value.state-null   { color: var(--text-muted); }
+
+.m1-probs { display: flex; flex-direction: column; gap: 0.4rem; }
+
+.prob-row {
+  display: grid; grid-template-columns: 3.2rem 1fr 3rem;
+  align-items: center; gap: 0.5rem;
+}
+.prob-name { font-size: 0.76rem; color: var(--text-secondary); }
+.prob-bar {
+  height: 7px; border-radius: 999px; background: var(--surface-3);
+  border: 1px solid var(--border); overflow: hidden;
+}
+.prob-fill { height: 100%; width: 0%; border-radius: 999px; transition: width 0.15s ease-out; }
+.prob-fill.prob-active { background: var(--status-good); }
+.prob-fill.prob-rest   { background: var(--status-warning); }
+.prob-fill.prob-null   { background: var(--text-muted); }
+.prob-pct {
+  font-size: 0.76rem; color: var(--text-muted); text-align: right;
+  font-variant-numeric: tabular-nums;
+}

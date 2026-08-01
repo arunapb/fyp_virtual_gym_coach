@@ -1,0 +1,14 @@
+# The repository root sets `* text=auto`, which leaves binary detection to a
+# heuristic.  These files must never have their line endings rewritten — a
+# "normalised" MP3 or model file is silently corrupt, and the corruption only
+# shows up when something tries to decode it.  Marked explicitly rather than
+# relying on the heuristic getting it right.
+*.mp3  binary
+*.wav  binary
+*.ogg  binary
+*.flac binary
+*.m4a  binary
+*.aiff binary
+*.task binary
+*.mp4  binary
+*.webm binary
