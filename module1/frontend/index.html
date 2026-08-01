@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Virtual Gym Coach — Module 1 Test Harness</title>
+  <link rel="stylesheet" href="/style.css" />
+</head>
+<body>
+  <header>
+    <h1>Virtual Gym Coach</h1>
+    <p class="subtitle">Module 1 — Exercise Recognition test harness</p>
+  </header>
+
+  <main>
+    <section class="controls">
+      <label class="file-btn">
+        Upload Video
+        <input id="file-video" type="file" accept="video/*" hidden />
+      </label>
+      <button id="btn-stop" disabled>Stop Session</button>
+      <span id="conn-status" class="badge badge-idle">idle</span>
+    </section>
+
+    <section class="workspace">
+      <aside class="readout">
+        <div class="tile">
+          <span class="tile-label">State</span>
+          <span id="state-value" class="tile-value">—</span>
+        </div>
+        <div class="tile">
+          <span class="tile-label">Exercise</span>
+          <span id="exercise-value" class="tile-value">—</span>
+        </div>
+        <div class="tile">
+          <span class="tile-label">Confidence</span>
+          <span id="confidence-value" class="tile-value">—</span>
+        </div>
+        <div class="tile">
+          <span class="tile-label">Elapsed (current exercise)</span>
+          <span id="elapsed-value" class="tile-value">—</span>
+        </div>
+        <div class="tile">
+          <span class="tile-label">Raw Prediction</span>
+          <span id="raw-label-value" class="tile-value">—</span>
+        </div>
+        <div class="tile">
+          <span class="tile-label">Session Time</span>
+          <span id="session-time-value" class="tile-value">—</span>
+        </div>
+      </aside>
+
+      <div class="stage">
+        <img id="preview-img" alt="Server-analyzed frame preview" hidden />
+        <div id="stage-loading" class="stage-loading" hidden>
+          <span id="stage-loading-text">Uploading</span><span class="dots"><span>.</span><span>.</span><span>.</span></span>
+        </div>
+        <div id="stage-placeholder" class="stage-placeholder">
+          <span class="stage-placeholder-icon">🎬</span>
+          <span>Upload a video to begin analysis</span>
+        </div>
+      </div>
+
+      <aside class="readout readout-right">
+        <div class="tile">
+          <span class="tile-label">Frames Processed</span>
+          <span id="frame-count-value" class="tile-value">—</span>
+        </div>
+        <div class="tile tile-probs">
+          <span class="tile-label">State Probabilities</span>
+          <div class="prob-row">
+            <span class="prob-name">Active</span>
+            <div class="prob-bar"><div id="prob-active-bar" class="prob-fill prob-active"></div></div>
+            <span id="prob-active-value" class="prob-pct">—</span>
+          </div>
+          <div class="prob-row">
+            <span class="prob-name">Rest</span>
+            <div class="prob-bar"><div id="prob-rest-bar" class="prob-fill prob-rest"></div></div>
+            <span id="prob-rest-value" class="prob-pct">—</span>
+          </div>
+          <div class="prob-row">
+            <span class="prob-name">Null</span>
+            <div class="prob-bar"><div id="prob-null-bar" class="prob-fill prob-null"></div></div>
+            <span id="prob-null-value" class="prob-pct">—</span>
+          </div>
+        </div>
+      </aside>
+    </section>
+
+    <section class="summary" id="summary-section" hidden>
+      <h2>Session Summary</h2>
+      <table id="summary-table"></table>
+      <pre id="summary-json"></pre>
+    </section>
+  </main>
+
+  <script src="/app.js"></script>
+</body>
+</html>
