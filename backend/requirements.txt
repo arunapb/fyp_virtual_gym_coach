@@ -1,0 +1,64 @@
+# backend/requirements.txt — hand-curated union of module1's and module2's
+# actual runtime dependencies (not a concatenation of both files: module1's
+# requirements.txt is UTF-16-encoded and pins training-time extras — jax,
+# scikit-learn, seaborn — that are not imported anywhere in the runtime path
+# this backend drives).
+#
+# REQUIRES PYTHON 3.10+. Module 2's source uses `X | None` union-type syntax
+# (PEP 604) in live function signatures, evaluated eagerly — it will not
+# import on 3.9. Both modules run fine standalone on their own documented
+# versions; this backend imports Module 2's src/config directly (unmodified),
+# so it inherits Module 2's floor. Verified working on Python 3.12.10.
+#
+# Versions below are what was verified working (pip install, no pins beyond
+# what's listed) — loosen/tighten as needed for your environment.
+
+fastapi>=0.140
+starlette>=1.0
+uvicorn[standard]>=0.50
+websockets>=17.0
+python-multipart>=0.0.20
+
+mediapipe==0.10.14
+opencv-python==4.13.0.92
+torch>=2.8
+numpy>=2.0
+pandas>=2.2
+matplotlib>=3.9
+sounddevice>=0.5
+soundfile>=0.12
+
+# --- Module 3 (meal recommendation & feedback) ------------------------------
+# Its services are imported from module3/ in place, not copied (see
+# backend/module3/__init__.py), so these are its runtime dependencies as
+# listed in module3/backend/requirements.txt, minus what is already above
+# (fastapi, uvicorn, pydantic, python-dotenv, torch, transformers, numpy,
+# pandas).
+#
+# The spaCy MODEL is a separate download and is NOT a pip requirement — the
+# feedback pipeline's causal parser needs it:
+#     python -m spacy download en_core_web_sm
+#
+# The BERT ABSA (nipun145/food_feedback) and BART zero-shot
+# (facebook/bart-large-mnli) weights pull from Hugging Face on the first
+# /api/meals/feedback call (~2 GB) and cache in ~/.cache/huggingface. The
+# FAISS index and recipe corpus are already vendored in module3/vector_store/.
+sentence-transformers>=3.0
+faiss-cpu>=1.8
+rank-bm25>=0.2
+spacy>=3.7
+vaderSentiment>=3.3
+qdrant-client>=1.9        # optional cloud vector search; falls back to FAISS
+
+# --- Module 4 (nutrition analysis) -----------------------------------------
+# Weights are NOT vendored: ~200 MB downloads from Hugging Face on the first
+# /api/nutrition/predict call and is then cached in ~/.cache/huggingface.
+# module4/requirements.txt pins `--extra-index-url .../whl/cpu`; that is
+# deliberately NOT copied here, so torch resolves the same way it does for
+# Modules 1 and 2 rather than being forced to the CPU-only wheel.
+torchvision>=0.17
+timm>=1.0
+transformers>=4.45
+huggingface_hub>=0.23
+pillow>=10.0
+python-dotenv>=1.0

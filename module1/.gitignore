@@ -1,0 +1,187 @@
+# =============================================================================
+# Python
+# =============================================================================
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyc
+*.pyo
+*.pyd
+*.pdb
+
+# =============================================================================
+# Virtual Environment
+# =============================================================================
+venv/
+env/
+.venv/
+.env/
+ENV/
+env.bak/
+venv.bak/
+
+# =============================================================================
+# Distribution / Packaging
+# =============================================================================
+build/
+dist/
+*.egg-info/
+*.egg
+.eggs/
+wheels/
+*.whl
+
+# =============================================================================
+# Data Files — Large / Generated
+# Keep folder structure via .gitkeep but ignore actual data files
+# =============================================================================
+
+# Raw videos (large — store on external drive or cloud)
+data/raw_videos/*.mp4
+data/raw_videos/*.avi
+data/raw_videos/*.mov
+data/raw_videos/*.mkv
+data/raw_videos/*.webm
+data/raw_videos/null_clips/
+
+# Legacy sample_videos folder
+data/sample_videos/*.mp4
+data/sample_videos/*.avi
+data/sample_videos/*.mov
+data/sample_videos/*.mkv
+data/sample_videos/*.webm
+
+# Extracted landmark CSVs (large — regenerate from raw video + app.py)
+data/landmarks/*.csv
+outputs/landmarks.csv
+outputs/*.csv
+
+# Annotation CSVs (TRACKED — small text files, represent your labeling work)
+# Do NOT add data/annotations/ here
+
+# Split label index CSVs (TRACKED — small, reproducible from annotations)
+# Do NOT add data/labels/ here
+
+# Saved NumPy window arrays (large binary — regenerate from dataset script)
+data/windows/all/*.npy
+data/windows/train/*.npy
+data/windows/val/*.npy
+data/windows/test/*.npy
+
+# =============================================================================
+# Model Checkpoints (large binary files — use Git LFS or cloud storage)
+# =============================================================================
+# models/
+# *.pt
+*.pth
+*.ckpt
+*.h5
+*.pkl
+*.joblib
+
+# =============================================================================
+# Debug / Output Videos
+# =============================================================================
+outputs/debug_videos/*.avi
+outputs/debug_videos/*.mp4
+outputs/debug_videos/*.mov
+
+# =============================================================================
+# Jupyter Notebooks — checkpoints
+# =============================================================================
+.ipynb_checkpoints/
+*.ipynb
+
+# =============================================================================
+# MediaPipe / OpenCV cache
+# =============================================================================
+.mediapipe/
+
+# =============================================================================
+# PyTorch / Training artifacts
+# =============================================================================
+runs/
+lightning_logs/
+wandb/
+mlruns/
+*.log
+training/logs/
+training/runs/
+
+# =============================================================================
+# IDE / Editor files
+# =============================================================================
+
+# VS Code
+.vscode/
+*.code-workspace
+
+# PyCharm / IntelliJ
+.idea/
+*.iml
+*.iws
+*.ipr
+
+# Spyder
+.spyderproject.db
+.spyproject
+
+# Rope
+.ropeproject
+
+# =============================================================================
+# OS-generated files
+# =============================================================================
+
+# Windows
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+*.lnk
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# Linux
+*~
+
+# =============================================================================
+# Environment / Secrets
+# =============================================================================
+.env
+.env.local
+.env.*.local
+*.secret
+secrets.py
+
+# =============================================================================
+# Testing / Coverage
+# =============================================================================
+.pytest_cache/
+.coverage
+coverage.xml
+htmlcov/
+*.cover
+.hypothesis/
+
+# =============================================================================
+# Temporary files
+# =============================================================================
+*.tmp
+*.temp
+*.bak
+*.swp
+*.swo
+tmp/
+temp/
+
+# =============================================================================
+# API — uploaded test videos (temporary, per-session)
+# =============================================================================
+uploads/*
+!uploads/.gitkeep

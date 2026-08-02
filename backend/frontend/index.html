@@ -1,0 +1,320 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Virtual Gym Coach</title>
+<link rel="stylesheet" href="/static/style.css">
+<!-- .tabs lives in nutrition.css, which both pages share for the nav. -->
+<link rel="stylesheet" href="/static/nutrition.css">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><text y='26' font-size='26'>%F0%9F%8F%8B</text></svg>">
+<!-- Render-blocking on purpose: redirects a signed-out visitor to /login
+     before the dashboard paints. Demo gate only — see auth.js. -->
+<script src="/static/auth.js"></script>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand">
+    <span class="brand-mark" aria-hidden="true"></span>
+    <div>
+      <h1>Virtual Gym Coach</h1>
+      <p>Upload a video &middot; exercise recognition and form correction run together, live</p>
+    </div>
+  </div>
+  <div class="topbar-actions">
+    <nav class="tabs" aria-label="Sections">
+      <a class="tab active" href="/" aria-current="page">Workout analysis</a>
+      <a class="tab" href="/nutrition">Nutrition</a>
+      <a class="tab" href="/meals">Meal plan</a>
+    </nav>
+    <button id="new-analysis" class="ghost-btn" hidden>New analysis</button>
+    <button id="sign-out" class="ghost-btn small" title="Sign out">Sign out</button>
+  </div>
+</header>
+
+<main>
+
+<!-- ══════════════════════════════════ UPLOAD ══════════════════════════════ -->
+<!--
+  Two columns: the Module 1 + Module 2 workout flow on the left (unchanged),
+  and Module 4's entry card on the right. Module 4 is a separate tool, not a
+  step in the workout pipeline, so it sits beside that flow rather than in it.
+-->
+<section id="view-upload" class="view landing">
+  <form id="upload-form" novalidate>
+    <fieldset class="panel">
+      <legend>1 &nbsp;Upload the video</legend>
+      <p class="hint">Module 1 identifies which exercise you're doing automatically —
+        no need to pick one. Once it locks onto a supported exercise (Squat, Bicep
+        Curl or Shoulder Press), Module 2's form correction activates for it.</p>
+      <div id="dropzone" class="dropzone" tabindex="0" role="button"
+           aria-label="Choose a video file or drop one here">
+        <svg viewBox="0 0 24 24" aria-hidden="true" class="drop-icon">
+          <path d="M12 16V4m0 0L7.5 8.5M12 4l4.5 4.5" fill="none"
+                stroke="currentColor" stroke-width="1.6" stroke-linecap="round"
+                stroke-linejoin="round"/>
+          <path d="M3.5 15v3.5A1.5 1.5 0 0 0 5 20h14a1.5 1.5 0 0 0 1.5-1.5V15"
+                fill="none" stroke="currentColor" stroke-width="1.6"
+                stroke-linecap="round"/>
+        </svg>
+        <p class="drop-title">Drop a video here, or click to browse</p>
+        <p class="hint" id="drop-limits"></p>
+        <input type="file" id="file-input" accept="video/*" hidden>
+      </div>
+      <div id="file-chosen" class="chosen" hidden>
+        <span class="chosen-name"></span>
+        <span class="chosen-size"></span>
+        <button type="button" class="link-btn" id="clear-file">remove</button>
+      </div>
+    </fieldset>
+
+    <fieldset class="panel">
+      <legend>2 &nbsp;Before you start</legend>
+      <ul class="checklist" id="calibration-note"></ul>
+    </fieldset>
+
+    <p id="upload-error" class="error" role="alert" hidden></p>
+    <button type="submit" id="analyse-btn" class="primary-btn" disabled>
+      Analyse video
+    </button>
+  </form>
+
+  <!-- Modules 4 and 3 live on their own pages — separate tools, not steps in
+       the workout pipeline. These cards are the way in from the landing page.
+       Each takes half the column's height, stacked. -->
+  <aside class="landing-aside">
+    <a class="feature-card" href="/nutrition">
+      <span class="feature-glow" aria-hidden="true"></span>
+
+      <span class="feature-head">
+        <span class="feature-icon" aria-hidden="true">🥗</span>
+        <span class="feature-tag">Module 4</span>
+      </span>
+
+      <span class="feature-title">Nutrition analysis</span>
+      <span class="feature-desc">
+        Calories, macros and a full ingredient breakdown — estimated from a
+        single photo of your meal.
+      </span>
+
+      <ul class="feature-list">
+        <li>Dish totals: calories, fat, carbs, protein</li>
+        <li>Per-ingredient grams and energy</li>
+        <li>Energy-consistent by Atwater construction</li>
+      </ul>
+
+      <span class="feature-cta">
+        Open nutrition analysis
+        <span class="feature-go" aria-hidden="true">→</span>
+      </span>
+    </a>
+
+    <a class="feature-card feature-card--meals" href="/meals">
+      <span class="feature-glow" aria-hidden="true"></span>
+
+      <span class="feature-head">
+        <span class="feature-icon" aria-hidden="true">🍽️</span>
+        <span class="feature-tag">Module 3</span>
+      </span>
+
+      <span class="feature-title">Meal plan</span>
+      <span class="feature-desc">
+        A daily Breakfast / Lunch / Dinner plan built around your goal weight,
+        your tastes, and the workouts you analyse here.
+      </span>
+
+      <ul class="feature-list">
+        <li>Calorie &amp; protein targets from BMR, TDEE and pace</li>
+        <li>Recipes retrieved by BM25 + FAISS, MMR-diversified</li>
+        <li>Learns from plain-English feedback on your meals</li>
+      </ul>
+
+      <span class="feature-cta">
+        Open meal plan
+        <span class="feature-go" aria-hidden="true">→</span>
+      </span>
+    </a>
+  </aside>
+</section>
+
+<!-- ═════════════════════════════ SESSION (live → review) ══════════════════ -->
+<!--
+  One view for both halves of a session.  While the analysis runs it shows the
+  annotated frames arriving from the server; when it finishes, the same panels
+  stay put and the canvas is swapped for the recorded video so the run can be
+  scrubbed.  The banner, rep badge, info bar, zone strip and charts are the
+  SAME elements throughout — only what drives them changes.
+-->
+<section id="view-session" class="view" hidden>
+
+  <div class="results-top">
+    <div class="video-card">
+      <div class="video-shell">
+        <canvas id="live-canvas" hidden></canvas>
+        <video id="player" playsinline preload="auto" hidden></video>
+        <div class="live-badge" id="live-badge" hidden>
+          <span class="live-dot" aria-hidden="true"></span>Analysing
+        </div>
+        <div class="shell-placeholder" id="shell-placeholder">
+          Waiting for the first frame…
+        </div>
+      </div>
+
+      <!-- Transport while the analysis is running. -->
+      <div class="transport" id="live-transport" hidden>
+        <div class="progress-track" role="progressbar" aria-valuemin="0"
+             aria-valuemax="100" id="progress-bar-wrap">
+          <div class="progress-fill" id="progress-fill"></div>
+        </div>
+        <span class="time" id="live-stat">0 frames</span>
+        <span class="badge" id="live-rate"></span>
+        <button type="button" class="ghost-btn small" id="stop-btn">Stop</button>
+      </div>
+
+      <!-- Transport once it has finished and the recording is available. -->
+      <div class="transport" id="review-transport" hidden>
+        <button type="button" id="play-btn" class="icon-btn" aria-label="Play">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.5v13l11-6.5z"/></svg>
+        </button>
+        <span class="time" id="time-readout">0:00 / 0:00</span>
+        <span class="spacer"></span>
+        <span class="badge warn" id="truncated-badge" hidden></span>
+        <span class="badge" id="codec-badge"></span>
+      </div>
+
+      <figure class="strip-figure">
+        <figcaption>
+          Form zones over time
+          <span class="fig-note">click to jump &middot; each row is one risk channel</span>
+        </figcaption>
+        <canvas id="zone-strip" height="150"></canvas>
+        <div class="legend" id="zone-legend"></div>
+      </figure>
+    </div>
+
+    <aside class="live-card">
+      <!-- Module 1: live state/exercise recognition readout, every frame. -->
+      <div class="m1-panel" id="m1-panel">
+        <div class="signal-head">Module&nbsp;1 &middot; exercise recognition</div>
+        <div class="m1-tile-row">
+          <div class="m1-tile">
+            <span class="m1-tile-label">State</span>
+            <span id="m1-state" class="m1-tile-value">—</span>
+          </div>
+          <div class="m1-tile">
+            <span class="m1-tile-label">Exercise</span>
+            <span id="m1-exercise" class="m1-tile-value">—</span>
+          </div>
+          <div class="m1-tile">
+            <span class="m1-tile-label">Confidence</span>
+            <span id="m1-confidence" class="m1-tile-value">—</span>
+          </div>
+        </div>
+        <div class="m1-probs">
+          <div class="prob-row">
+            <span class="prob-name">Active</span>
+            <div class="prob-bar"><div id="m1-prob-active-bar" class="prob-fill prob-active"></div></div>
+            <span id="m1-prob-active-value" class="prob-pct">—</span>
+          </div>
+          <div class="prob-row">
+            <span class="prob-name">Rest</span>
+            <div class="prob-bar"><div id="m1-prob-rest-bar" class="prob-fill prob-rest"></div></div>
+            <span id="m1-prob-rest-value" class="prob-pct">—</span>
+          </div>
+          <div class="prob-row">
+            <span class="prob-name">Null</span>
+            <div class="prob-bar"><div id="m1-prob-null-bar" class="prob-fill prob-null"></div></div>
+            <span id="m1-prob-null-value" class="prob-pct">—</span>
+          </div>
+        </div>
+      </div>
+
+      <!--
+        The Module-1 signal, as a manual override — hidden by default. Module 1's
+        live classification drives Module 2 automatically; this stays in the
+        markup, unused, only as a debugging escape hatch.
+      -->
+      <div class="signal-bar" id="signal-bar" hidden>
+        <div class="signal-head">
+          Module&nbsp;1 signal
+          <span class="fig-note">manual override</span>
+        </div>
+        <div class="signal-buttons" id="signal-buttons"></div>
+      </div>
+
+      <div id="overall-banner" class="overall">—</div>
+
+      <div class="rep-badge">
+        <div>
+          <span class="rep-count" id="live-reps">0</span>
+          <span class="rep-label">reps</span>
+        </div>
+        <div class="rep-side">
+          <span class="phase-chip" id="live-phase">—</span>
+          <span class="last-rep" id="live-last"></span>
+        </div>
+      </div>
+
+      <div class="info-bar" id="info-bar" aria-live="off"></div>
+
+      <label class="toggle audio-row">
+        <input type="checkbox" id="audio-toggle" checked>
+        <span>Play coaching audio</span>
+      </label>
+
+      <div class="cue-now" id="cue-now" hidden>
+        <span class="cue-dot" aria-hidden="true"></span>
+        <span id="cue-now-text"></span>
+      </div>
+    </aside>
+  </div>
+
+  <div class="tiles" id="summary-tiles"></div>
+
+  <div class="results-grid">
+    <section class="panel">
+      <h2>Repetitions</h2>
+      <p class="hint" id="rep-hint"></p>
+      <div class="table-scroll"><table id="rep-table"></table></div>
+    </section>
+
+    <section class="panel">
+      <h2>Coaching cues</h2>
+      <p class="hint">Decided by the live audio controller — dwell windows,
+        cooldowns and priority all applied. Click a cue to jump to it.</p>
+      <ol class="cue-log" id="cue-log"></ol>
+    </section>
+  </div>
+
+  <section class="panel" id="charts-panel">
+    <h2>Biomechanics</h2>
+    <p class="hint">Traces are this session's measured values, drawn as they are
+      measured; horizontal rules are the thresholds in <code>config.py</code>
+      that classify them.</p>
+    <div id="charts"></div>
+  </section>
+
+  <section class="panel" id="downloads-panel" hidden>
+    <h2>Downloads</h2>
+    <p class="hint">The same CSV schemas the desktop pipeline and the evaluation
+      scripts use.</p>
+    <div class="downloads" id="downloads"></div>
+  </section>
+
+</section>
+
+<!-- ═════════════════════════════════ FAILURE ══════════════════════════════ -->
+<section id="view-error" class="view" hidden>
+  <div class="panel">
+    <h2>Analysis failed</h2>
+    <p class="error" id="fail-message"></p>
+    <button type="button" class="primary-btn" id="retry-btn">Start over</button>
+  </div>
+</section>
+
+</main>
+
+<script src="/static/app.js"></script>
+</body>
+</html>

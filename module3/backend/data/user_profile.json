@@ -1,0 +1,13 @@
+{
+  "user_id": "user_001",
+  "name": "Emma",
+  "age": 24,
+  "gender": "female",
+  "weight_kg": 46.0,
+  "height_cm": 160.0,
+  "activity_level": "moderately_active",
+  "goal": "weight_gain",
+  "meals_per_day": 3,
+  "goal_weight_kg": 55.0,
+  "selected_pace": "balanced"
+}

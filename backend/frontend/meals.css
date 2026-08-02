@@ -1,0 +1,265 @@
+/* ==========================================================================
+   Meal plan page (Module 3) — additions on top of style.css + nutrition.css.
+
+   Reused rather than redefined: .topbar/.brand, .panel, .hint, .tiles/.tile,
+   .ghost-btn/.primary-btn/.icon-btn, and .tabs (from nutrition.css). Only the
+   pieces this page alone needs live here — form controls (the dashboard has
+   almost none), modals, the recipe grid, the preference chips and the
+   workout-log list.
+
+   Module 3's test_frontend used its own palette — indigo #6366f1, purple
+   #a855f7, emerald #10b981 on slate #0f172a — and its own variable names
+   (--primary, --accent-purple, --text-muted, --border-color). Those are
+   mapped onto the shared tokens instead:
+
+       primary / indigo   -> --accent           (the app's blue)
+       emerald / positive -> --status-good
+       red / negative     -> --status-critical
+       amber / rating     -> --status-warning
+       purple accents     -> --series-2         (the palette's second slot)
+
+   so a meal card and a rep table read as the same product.
+   ========================================================================== */
+
+/* ── Layout ──────────────────────────────────────────────────────────────── */
+.meals-view {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(260px, 320px);
+  gap: 1.1rem;
+  align-items: start;
+}
+.meals-main, .meals-side {
+  display: flex; flex-direction: column; gap: 1.1rem; min-width: 0;
+}
+/* The sidebar tracks the page rather than the main column's full height. */
+.meals-side { position: sticky; top: 5.2rem; }
+
+@media (max-width: 1080px) {
+  .meals-view { grid-template-columns: 1fr; }
+  .meals-side { position: static; }
+}
+
+/* ── Panel headers ───────────────────────────────────────────────────────── */
+.panel-head {
+  display: flex; align-items: flex-start; justify-content: space-between;
+  gap: 0.9rem; flex-wrap: wrap; margin-bottom: 0.9rem;
+}
+.panel-head > div:first-child { min-width: 0; }
+.panel-actions {
+  display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;
+}
+.ghost-btn.danger {
+  color: var(--status-critical);
+  border-color: color-mix(in srgb, var(--status-critical) 45%, transparent);
+}
+.ghost-btn.danger:hover {
+  background: color-mix(in srgb, var(--status-critical) 12%, transparent);
+  color: var(--status-critical);
+}
+
+/* Four read-only numbers per row read better a size down from the end-of-run
+   summary tiles, which are the loudest thing on the dashboard by design. */
+.tiles.compact { grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 0.6rem; }
+.tiles.compact .tile { background: var(--surface-2); padding: 0.65rem 0.8rem; }
+.tiles.compact .tile-value { font-size: 1.15rem; overflow-wrap: anywhere; }
+.tile-sub {
+  display: block; font-size: 0.74rem; font-weight: 400;
+  color: var(--text-muted); margin-top: 0.15rem;
+}
+
+/* ── Connection badge ────────────────────────────────────────────────────── */
+.conn {
+  display: inline-flex; align-items: center; gap: 0.4rem;
+  font-size: 0.78rem; color: var(--text-muted);
+  padding: 0.28rem 0.7rem; border-radius: 99px;
+  border: 1px solid var(--border); background: var(--surface-2);
+  white-space: nowrap;
+}
+.conn-dot {
+  width: 7px; height: 7px; border-radius: 99px; flex: none;
+  background: var(--text-muted);
+}
+.conn.ok    .conn-dot { background: var(--status-good); }
+.conn.ok    { color: var(--text-secondary); }
+.conn.down  .conn-dot { background: var(--status-critical); }
+.conn.down  { color: var(--status-critical);
+              border-color: color-mix(in srgb, var(--status-critical) 40%, transparent); }
+
+/* ── Meal-slot target split ──────────────────────────────────────────────── */
+.slot-split { margin-top: 1rem; padding-top: 0.9rem; border-top: 1px dashed var(--border); }
+.slot-split-label {
+  font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em;
+  color: var(--text-muted); margin-bottom: 0.6rem;
+}
+.slot-grid {
+  display: grid; gap: 0.6rem;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+}
+.slot-card {
+  border-radius: var(--radius); padding: 0.65rem 0.8rem;
+  border: 1px solid var(--border); background: var(--surface-2);
+  border-left-width: 3px;
+}
+/* One hue per slot, drawn from the shared palette so the three stay
+   distinguishable without inventing colours. */
+.slot-breakfast { border-left-color: var(--status-warning); }
+.slot-lunch     { border-left-color: var(--accent); }
+.slot-dinner    { border-left-color: var(--status-good); }
+.slot-name {
+  font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em;
+  color: var(--text-muted);
+}
+.slot-value { font-size: 0.95rem; font-weight: 600; margin-top: 0.2rem; }
+.slot-value small { font-weight: 400; color: var(--text-secondary); }
+
+/* ── Meal plan ───────────────────────────────────────────────────────────── */
+.loading-note { padding: 2rem 0; text-align: center; }
+
+.meal-section + .meal-section { margin-top: 1.4rem; }
+.meal-head {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 0.7rem; flex-wrap: wrap; margin-bottom: 0.65rem;
+}
+.meal-name {
+  font-size: 0.95rem; font-weight: 600;
+  display: inline-flex; align-items: center; gap: 0.45rem;
+}
+.meal-target {
+  font-size: 0.78rem; color: var(--text-secondary);
+  padding: 0.2rem 0.65rem; border-radius: 99px;
+  background: var(--surface-2); border: 1px solid var(--border);
+}
+.meal-target strong { color: var(--text-primary); }
+
+.recipe-grid {
+  display: grid; gap: 0.8rem;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+}
+.recipe-card {
+  display: flex; flex-direction: column;
+  border: 1px solid var(--border); border-radius: var(--radius);
+  background: var(--surface-2); padding: 0.85rem 0.95rem;
+  transition: border-color 0.12s;
+}
+.recipe-card:hover { border-color: var(--border-strong); }
+.recipe-top {
+  display: flex; align-items: flex-start; justify-content: space-between; gap: 0.6rem;
+}
+.recipe-title { font-weight: 600; line-height: 1.35; overflow-wrap: anywhere; }
+.recipe-rating {
+  flex: none; font-size: 0.72rem; font-variant-numeric: tabular-nums;
+  color: var(--status-warning); border-radius: 99px; padding: 0.1rem 0.5rem;
+  background: color-mix(in srgb, var(--status-warning) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--status-warning) 30%, transparent);
+}
+.recipe-meta {
+  display: flex; gap: 0.9rem; flex-wrap: wrap;
+  margin-top: 0.45rem; font-size: 0.82rem; color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+.recipe-meta .kcal { color: var(--status-warning); }
+.recipe-meta .prot { color: var(--status-good); }
+
+.ing-tags { display: flex; flex-wrap: wrap; gap: 0.3rem; margin-top: 0.6rem; }
+.ing-tag {
+  font-size: 0.72rem; color: var(--text-secondary);
+  padding: 0.12rem 0.5rem; border-radius: 99px;
+  background: var(--surface-3); border: 1px solid var(--border);
+}
+.ing-tag.more { color: var(--text-muted); background: transparent; }
+
+/* Steps are long; collapsed by default so a slot of 3 recipes stays scannable. */
+.recipe-steps { margin-top: 0.7rem; }
+.recipe-steps > summary {
+  cursor: pointer; font-size: 0.8rem; color: var(--accent);
+  list-style: none; width: fit-content;
+}
+.recipe-steps > summary::-webkit-details-marker { display: none; }
+.recipe-steps > summary::before { content: '▸ '; }
+.recipe-steps[open] > summary::before { content: '▾ '; }
+.recipe-steps ol {
+  margin: 0.5rem 0 0; padding-left: 1.15rem;
+  font-size: 0.8rem; color: var(--text-secondary); line-height: 1.55;
+}
+.recipe-steps li { margin-bottom: 0.25rem; }
+
+.recipe-why {
+  margin-top: auto; padding-top: 0.6rem;
+  font-size: 0.75rem; color: var(--text-muted); line-height: 1.5;
+}
+
+/* ── Preferences ─────────────────────────────────────────────────────────── */
+.pref-list { display: flex; flex-direction: column; gap: 0.35rem; }
+/* Name only — the score is not rendered (see meals.js). Like vs. dislike is
+   carried by the thumb and the left edge, so nothing is lost by dropping it. */
+.pref-chip {
+  display: flex; align-items: center; gap: 0.6rem;
+  padding: 0.35rem 0.6rem; border-radius: var(--radius);
+  font-size: 0.82rem; border: 1px solid var(--border); background: var(--surface-2);
+}
+.pref-chip.positive { border-left: 3px solid var(--status-good); }
+.pref-chip.negative { border-left: 3px solid var(--status-critical); }
+
+/* ── Logged workouts ─────────────────────────────────────────────────────── */
+.log-avg {
+  display: flex; align-items: baseline; justify-content: space-between;
+  gap: 0.5rem; padding: 0.55rem 0.7rem; margin-bottom: 0.7rem;
+  border-radius: var(--radius); background: var(--surface-2);
+  border: 1px solid var(--border);
+  font-size: 0.8rem; color: var(--text-muted);
+}
+.log-avg strong {
+  font-size: 1rem; color: var(--status-good); font-variant-numeric: tabular-nums;
+}
+.log-list { display: flex; flex-direction: column; gap: 0.3rem; max-height: 320px; overflow-y: auto; }
+.log-row {
+  display: grid; grid-template-columns: 1fr auto; gap: 0.2rem 0.6rem;
+  padding: 0.4rem 0.6rem; border-radius: var(--radius);
+  background: var(--surface-2); border: 1px solid var(--border);
+  font-size: 0.82rem;
+}
+.log-row.today { border-color: color-mix(in srgb, var(--status-good) 40%, transparent); }
+.log-ex { font-weight: 500; }
+.log-kcal { color: var(--status-warning); font-variant-numeric: tabular-nums; }
+.log-when, .log-dur {
+  font-size: 0.74rem; color: var(--text-muted); font-variant-numeric: tabular-nums;
+}
+.log-dur { text-align: right; }
+
+/* Form controls, modals, the pace picker and the toast now live in forms.css —
+   the login page's onboarding popup is the same markup driven by the same
+   script (profile-goal.js), so its styling had to be loadable by both pages. */
+
+/* ── Feedback modal extras ───────────────────────────────────────────────── */
+#feedback-form { margin-top: 0.9rem; }
+
+.presets { display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem; margin-top: 0.9rem; }
+.chip {
+  font: inherit; font-size: 0.78rem; cursor: pointer;
+  padding: 0.22rem 0.68rem; border-radius: 99px;
+  background: var(--surface-2); border: 1px solid var(--border-strong);
+  color: var(--text-secondary); transition: background 0.12s, color 0.12s;
+}
+.chip:hover { background: var(--surface-3); color: var(--text-primary); }
+
+/* ── Busy state ──────────────────────────────────────────────────────────── */
+/* The first /recommend of a session pays Module 3's index + model load (tens
+   of seconds — see backend/module3/bridge.py). Saying nothing for that long
+   reads as a hang, so the panel dims and the note below explains the wait. */
+.busy-note {
+  display: flex; align-items: center; gap: 0.55rem;
+  padding: 2rem 0; justify-content: center;
+  font-size: 0.86rem; color: var(--text-muted); text-align: center;
+}
+.busy-spinner {
+  width: 16px; height: 16px; border-radius: 50%; flex: none;
+  border: 2px solid color-mix(in srgb, var(--accent) 22%, transparent);
+  border-top-color: var(--accent);
+  animation: meals-spin 0.8s linear infinite;
+}
+@keyframes meals-spin { to { transform: rotate(360deg); } }
+
+/* The modal and toast equivalents of this live in forms.css. */
+@media (prefers-reduced-motion: reduce) {
+  .busy-spinner { animation: none; }
+}

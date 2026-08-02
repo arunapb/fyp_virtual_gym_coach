@@ -1,0 +1,596 @@
+[
+  {
+    "date": "2026-08-02",
+    "time": "11:05",
+    "user_id": "user_001",
+    "meal_type": "Breakfast",
+    "recipe_title": "Alabama Egg And Sausage Souffle",
+    "normalized_title": "alabama egg and sausage souffle",
+    "target_calories": 441
+  },
+  {
+    "date": "2026-08-02",
+    "time": "11:05",
+    "user_id": "user_001",
+    "meal_type": "Breakfast",
+    "recipe_title": "Ancho Chile Marinade For Meat Ala Chipotle",
+    "normalized_title": "ancho chile marinade for meat ala chipotle",
+    "target_calories": 441
+  },
+  {
+    "date": "2026-08-02",
+    "time": "11:05",
+    "user_id": "user_001",
+    "meal_type": "Lunch",
+    "recipe_title": "Another Dry Rib Recipe",
+    "normalized_title": "another dry rib recipe",
+    "target_calories": 706
+  },
+  {
+    "date": "2026-08-02",
+    "time": "11:05",
+    "user_id": "user_001",
+    "meal_type": "Lunch",
+    "recipe_title": "Abita Beef Stew In A Crock Pot",
+    "normalized_title": "abita beef stew in a crock pot",
+    "target_calories": 706
+  },
+  {
+    "date": "2026-08-02",
+    "time": "11:05",
+    "user_id": "user_001",
+    "meal_type": "Dinner",
+    "recipe_title": "Chicken Fried Steak I",
+    "normalized_title": "chicken fried steak i",
+    "target_calories": 618
+  },
+  {
+    "date": "2026-08-02",
+    "time": "11:05",
+    "user_id": "user_001",
+    "meal_type": "Dinner",
+    "recipe_title": "All In One Crock Pot Chicken Dinner",
+    "normalized_title": "all in one crock pot chicken dinner",
+    "target_calories": 618
+  },
+  {
+    "date": "2026-08-02",
+    "time": "11:05",
+    "user_id": "user_001",
+    "meal_type": "Breakfast",
+    "recipe_title": "Almost Green Scrambled Eggs With Spinach",
+    "normalized_title": "almost green scrambled eggs with spinach",
+    "target_calories": 441
+  },
+  {
+    "date": "2026-08-02",
+    "time": "11:05",
+    "user_id": "user_001",
+    "meal_type": "Lunch",
+    "recipe_title": "Ann S Egg Sausage Casserole",
+    "normalized_title": "ann s egg sausage casserole",
+    "target_calories": 706
+  },
+  {
+    "date": "2026-08-02",
+    "time": "11:05",
+    "user_id": "user_001",
+    "meal_type": "Dinner",
+    "recipe_title": "5 Hour Beef Stew",
+    "normalized_title": "5 hour beef stew",
+    "target_calories": 618
+  },
+  {
+    "date": "2026-08-02",
+    "time": "11:06",
+    "user_id": "user_001",
+    "meal_type": "Breakfast",
+    "recipe_title": "All Purpose Ground Meat Mix",
+    "normalized_title": "all purpose ground meat mix",
+    "target_calories": 441
+  },
+  {
+    "date": "2026-08-02",
+    "time": "11:06",
+    "user_id": "user_001",
+    "meal_type": "Lunch",
+    "recipe_title": "Amanda S Parmesan Chicken",
+    "normalized_title": "amanda s parmesan chicken",
+    "target_calories": 706
+  },
+  {
+    "date": "2026-08-02",
+    "time": "11:06",
+    "user_id": "user_001",
+    "meal_type": "Dinner",
+    "recipe_title": "2Bleu S Country Ham Bacon  And Eggs",
+    "normalized_title": "2bleu s country ham bacon  and eggs",
+    "target_calories": 618
+  },
+  {
+    "date": "2026-08-02",
+    "time": "11:07",
+    "user_id": "user_001",
+    "meal_type": "Breakfast",
+    "recipe_title": "Kinda Sorta  Hungarian Goulash",
+    "normalized_title": "kinda sorta  hungarian goulash",
+    "target_calories": 441
+  },
+  {
+    "date": "2026-08-02",
+    "time": "11:07",
+    "user_id": "user_001",
+    "meal_type": "Lunch",
+    "recipe_title": "Ann S Italian Chicken",
+    "normalized_title": "ann s italian chicken",
+    "target_calories": 706
+  },
+  {
+    "date": "2026-08-02",
+    "time": "11:07",
+    "user_id": "user_001",
+    "meal_type": "Dinner",
+    "recipe_title": "Big Bear Stew",
+    "normalized_title": "big bear stew",
+    "target_calories": 618
+  },
+  {
+    "date": "2026-08-02",
+    "time": "11:07",
+    "user_id": "user_001",
+    "meal_type": "Breakfast",
+    "recipe_title": "15 Minute Pork Fried Rice",
+    "normalized_title": "15 minute pork fried rice",
+    "target_calories": 441
+  },
+  {
+    "date": "2026-08-02",
+    "time": "11:07",
+    "user_id": "user_001",
+    "meal_type": "Lunch",
+    "recipe_title": "Tex-Mex Turkey Soup",
+    "normalized_title": "tex-mex turkey soup",
+    "target_calories": 706
+  },
+  {
+    "date": "2026-08-02",
+    "time": "11:07",
+    "user_id": "user_001",
+    "meal_type": "Dinner",
+    "recipe_title": "7 Up Pork Roast With Glaze",
+    "normalized_title": "7 up pork roast with glaze",
+    "target_calories": 618
+  },
+  {
+    "date": "2026-08-02",
+    "time": "11:08",
+    "user_id": "user_001",
+    "meal_type": "Breakfast",
+    "recipe_title": "Fish Chowder",
+    "normalized_title": "fish chowder",
+    "target_calories": 441
+  },
+  {
+    "date": "2026-08-02",
+    "time": "11:08",
+    "user_id": "user_001",
+    "meal_type": "Lunch",
+    "recipe_title": "440 Main S Jambalaya",
+    "normalized_title": "440 main s jambalaya",
+    "target_calories": 706
+  },
+  {
+    "date": "2026-08-02",
+    "time": "11:08",
+    "user_id": "user_001",
+    "meal_type": "Dinner",
+    "recipe_title": "Amy S Crock Pot Chicken And Noodles",
+    "normalized_title": "amy s crock pot chicken and noodles",
+    "target_calories": 618
+  },
+  {
+    "date": "2026-08-02",
+    "time": "11:09",
+    "user_id": "user_001",
+    "meal_type": "Breakfast",
+    "recipe_title": "Crab Stuffed Haddock",
+    "normalized_title": "crab stuffed haddock",
+    "target_calories": 441
+  },
+  {
+    "date": "2026-08-02",
+    "time": "11:09",
+    "user_id": "user_001",
+    "meal_type": "Lunch",
+    "recipe_title": "Almond Crusted Salmon With Capers And Lemon",
+    "normalized_title": "almond crusted salmon with capers and lemon",
+    "target_calories": 706
+  },
+  {
+    "date": "2026-08-02",
+    "time": "11:09",
+    "user_id": "user_001",
+    "meal_type": "Dinner",
+    "recipe_title": "A Different Chicken Pot Pie  For The Freezer",
+    "normalized_title": "a different chicken pot pie  for the freezer",
+    "target_calories": 618
+  },
+  {
+    "date": "2026-08-02",
+    "time": "11:09",
+    "user_id": "user_001",
+    "meal_type": "Breakfast",
+    "recipe_title": "5 Ingredient Salmon In A Mustard   Honey Cream Sauce",
+    "normalized_title": "5 ingredient salmon in a mustard   honey cream sauce",
+    "target_calories": 441
+  },
+  {
+    "date": "2026-08-02",
+    "time": "11:09",
+    "user_id": "user_001",
+    "meal_type": "Lunch",
+    "recipe_title": "Andreas Viestad S Honey And Mustard Marinated Salmon With Rosema",
+    "normalized_title": "andreas viestad s honey and mustard marinated salmon with rosema",
+    "target_calories": 706
+  },
+  {
+    "date": "2026-08-02",
+    "time": "11:09",
+    "user_id": "user_001",
+    "meal_type": "Dinner",
+    "recipe_title": "Another Garlic Shrimp Recipe",
+    "normalized_title": "another garlic shrimp recipe",
+    "target_calories": 618
+  },
+  {
+    "date": "2026-08-02",
+    "time": "11:10",
+    "user_id": "user_001",
+    "meal_type": "Breakfast",
+    "recipe_title": "Crusted Salmon with Honey-Mustard Sauce",
+    "normalized_title": "crusted salmon with honey-mustard sauce",
+    "target_calories": 441
+  },
+  {
+    "date": "2026-08-02",
+    "time": "11:10",
+    "user_id": "user_001",
+    "meal_type": "Lunch",
+    "recipe_title": "Glenn's Blowing Rock Salmon",
+    "normalized_title": "glenn's blowing rock salmon",
+    "target_calories": 706
+  },
+  {
+    "date": "2026-08-02",
+    "time": "11:10",
+    "user_id": "user_001",
+    "meal_type": "Dinner",
+    "recipe_title": "3 Cheese Chicken Penne",
+    "normalized_title": "3 cheese chicken penne",
+    "target_calories": 618
+  },
+  {
+    "date": "2026-08-02",
+    "time": "11:10",
+    "user_id": "user_001",
+    "meal_type": "Breakfast",
+    "recipe_title": "Alder Planked Salmon With Soy Ginger Marinade",
+    "normalized_title": "alder planked salmon with soy ginger marinade",
+    "target_calories": 441
+  },
+  {
+    "date": "2026-08-02",
+    "time": "11:10",
+    "user_id": "user_001",
+    "meal_type": "Lunch",
+    "recipe_title": "Alaska Salmon W  Tomatillo Sauce  Fresh Corn   Poblano Chile",
+    "normalized_title": "alaska salmon w  tomatillo sauce  fresh corn   poblano chile",
+    "target_calories": 706
+  },
+  {
+    "date": "2026-08-02",
+    "time": "11:10",
+    "user_id": "user_001",
+    "meal_type": "Dinner",
+    "recipe_title": "3Rd Serving Meatloaf",
+    "normalized_title": "3rd serving meatloaf",
+    "target_calories": 618
+  },
+  {
+    "date": "2026-08-02",
+    "time": "11:18",
+    "user_id": "user_001",
+    "meal_type": "Breakfast",
+    "recipe_title": "Pepper-Honey Cedar Plank Salmon",
+    "normalized_title": "pepper-honey cedar plank salmon",
+    "target_calories": 441
+  },
+  {
+    "date": "2026-08-02",
+    "time": "11:18",
+    "user_id": "user_001",
+    "meal_type": "Lunch",
+    "recipe_title": "Almond Crusted Salmon With Leek And Lemon Cream",
+    "normalized_title": "almond crusted salmon with leek and lemon cream",
+    "target_calories": 706
+  },
+  {
+    "date": "2026-08-02",
+    "time": "11:18",
+    "user_id": "user_001",
+    "meal_type": "Dinner",
+    "recipe_title": "Andy S South West Chicken Soup  Atkins Low Carb",
+    "normalized_title": "andy s south west chicken soup  atkins low carb",
+    "target_calories": 618
+  },
+  {
+    "date": "2026-08-02",
+    "time": "11:18",
+    "user_id": "user_001",
+    "meal_type": "Breakfast",
+    "recipe_title": "Amarula Spicy Fish",
+    "normalized_title": "amarula spicy fish",
+    "target_calories": 441
+  },
+  {
+    "date": "2026-08-02",
+    "time": "11:18",
+    "user_id": "user_001",
+    "meal_type": "Lunch",
+    "recipe_title": "Ana S Honey And Soy Glazed Salmon",
+    "normalized_title": "ana s honey and soy glazed salmon",
+    "target_calories": 706
+  },
+  {
+    "date": "2026-08-02",
+    "time": "11:18",
+    "user_id": "user_001",
+    "meal_type": "Dinner",
+    "recipe_title": "10 Clove Stove Top Roast",
+    "normalized_title": "10 clove stove top roast",
+    "target_calories": 618
+  },
+  {
+    "date": "2026-08-02",
+    "time": "11:29",
+    "user_id": "user_001",
+    "meal_type": "Breakfast",
+    "recipe_title": "4Th Of July Salmon With Egg Sauce",
+    "normalized_title": "4th of july salmon with egg sauce",
+    "target_calories": 441
+  },
+  {
+    "date": "2026-08-02",
+    "time": "11:29",
+    "user_id": "user_001",
+    "meal_type": "Lunch",
+    "recipe_title": "A Different Garlic Bread",
+    "normalized_title": "a different garlic bread",
+    "target_calories": 706
+  },
+  {
+    "date": "2026-08-02",
+    "time": "11:29",
+    "user_id": "user_001",
+    "meal_type": "Dinner",
+    "recipe_title": "Amanda S Birthday Salmon",
+    "normalized_title": "amanda s birthday salmon",
+    "target_calories": 618
+  },
+  {
+    "date": "2026-08-02",
+    "time": "11:29",
+    "user_id": "user_001",
+    "meal_type": "Breakfast",
+    "recipe_title": "Grilled Salmon in Foil",
+    "normalized_title": "grilled salmon in foil",
+    "target_calories": 441
+  },
+  {
+    "date": "2026-08-02",
+    "time": "11:29",
+    "user_id": "user_001",
+    "meal_type": "Lunch",
+    "recipe_title": "Angel Hair Pasta With Smoked Salmon And Dill",
+    "normalized_title": "angel hair pasta with smoked salmon and dill",
+    "target_calories": 706
+  },
+  {
+    "date": "2026-08-02",
+    "time": "11:29",
+    "user_id": "user_001",
+    "meal_type": "Dinner",
+    "recipe_title": "Maurice Salad",
+    "normalized_title": "maurice salad",
+    "target_calories": 618
+  },
+  {
+    "date": "2026-08-02",
+    "time": "11:29",
+    "user_id": "user_001",
+    "meal_type": "Breakfast",
+    "recipe_title": "Alaska Salmon And Chipotle Wrap",
+    "normalized_title": "alaska salmon and chipotle wrap",
+    "target_calories": 441
+  },
+  {
+    "date": "2026-08-02",
+    "time": "11:29",
+    "user_id": "user_001",
+    "meal_type": "Lunch",
+    "recipe_title": "Kitchen Sink  Egg Bake",
+    "normalized_title": "kitchen sink  egg bake",
+    "target_calories": 706
+  },
+  {
+    "date": "2026-08-02",
+    "time": "11:29",
+    "user_id": "user_001",
+    "meal_type": "Dinner",
+    "recipe_title": "Almond Crusted Salmon",
+    "normalized_title": "almond crusted salmon",
+    "target_calories": 618
+  },
+  {
+    "date": "2026-08-02",
+    "time": "11:39",
+    "user_id": "user_001",
+    "meal_type": "Breakfast",
+    "recipe_title": "Lee's Salmon Baste",
+    "normalized_title": "lee's salmon baste",
+    "target_calories": 441
+  },
+  {
+    "date": "2026-08-02",
+    "time": "11:39",
+    "user_id": "user_001",
+    "meal_type": "Lunch",
+    "recipe_title": "Alex S Favorite Beef And Cheese Pie",
+    "normalized_title": "alex s favorite beef and cheese pie",
+    "target_calories": 706
+  },
+  {
+    "date": "2026-08-02",
+    "time": "11:39",
+    "user_id": "user_001",
+    "meal_type": "Dinner",
+    "recipe_title": "Acadia S Salmon Mushroom Stir Fry",
+    "normalized_title": "acadia s salmon mushroom stir fry",
+    "target_calories": 618
+  },
+  {
+    "date": "2026-08-02",
+    "time": "11:40",
+    "user_id": "user_001",
+    "meal_type": "Breakfast",
+    "recipe_title": "Salmon with Brown Sugar and Bourbon Glaze",
+    "normalized_title": "salmon with brown sugar and bourbon glaze",
+    "target_calories": 578
+  },
+  {
+    "date": "2026-08-02",
+    "time": "11:40",
+    "user_id": "user_001",
+    "meal_type": "Lunch",
+    "recipe_title": "Salmon Fillets with Creamy Dill",
+    "normalized_title": "salmon fillets with creamy dill",
+    "target_calories": 925
+  },
+  {
+    "date": "2026-08-02",
+    "time": "11:40",
+    "user_id": "user_001",
+    "meal_type": "Dinner",
+    "recipe_title": "Anita S Cheese And Potato Beef Pie",
+    "normalized_title": "anita s cheese and potato beef pie",
+    "target_calories": 810
+  },
+  {
+    "date": "2026-08-02",
+    "time": "11:41",
+    "user_id": "user_001",
+    "meal_type": "Breakfast",
+    "recipe_title": "Alaskan Salmon Dip",
+    "normalized_title": "alaskan salmon dip",
+    "target_calories": 649
+  },
+  {
+    "date": "2026-08-02",
+    "time": "11:41",
+    "user_id": "user_001",
+    "meal_type": "Lunch",
+    "recipe_title": "Apple Braised Salmon With Citrus Spiced Couscous",
+    "normalized_title": "apple braised salmon with citrus spiced couscous",
+    "target_calories": 1038
+  },
+  {
+    "date": "2026-08-02",
+    "time": "11:41",
+    "user_id": "user_001",
+    "meal_type": "Dinner",
+    "recipe_title": "Bacon Cheeseburger And Fries  Soup",
+    "normalized_title": "bacon cheeseburger and fries  soup",
+    "target_calories": 909
+  },
+  {
+    "date": "2026-08-02",
+    "time": "11:56",
+    "user_id": "user_001",
+    "meal_type": "Breakfast",
+    "recipe_title": "Alaskan Smoked Salmon Sauce",
+    "normalized_title": "alaskan smoked salmon sauce",
+    "target_calories": 565
+  },
+  {
+    "date": "2026-08-02",
+    "time": "11:56",
+    "user_id": "user_001",
+    "meal_type": "Lunch",
+    "recipe_title": "Amaretto Oriental Salmon",
+    "normalized_title": "amaretto oriental salmon",
+    "target_calories": 904
+  },
+  {
+    "date": "2026-08-02",
+    "time": "11:56",
+    "user_id": "user_001",
+    "meal_type": "Dinner",
+    "recipe_title": "15 Minute No Fry Chicken Enchiladas  Honest",
+    "normalized_title": "15 minute no fry chicken enchiladas  honest",
+    "target_calories": 791
+  },
+  {
+    "date": "2026-08-02",
+    "time": "11:56",
+    "user_id": "user_001",
+    "meal_type": "Breakfast",
+    "recipe_title": "Alaskan Smoked Salmon Sauce",
+    "normalized_title": "alaskan smoked salmon sauce",
+    "target_calories": 565
+  },
+  {
+    "date": "2026-08-02",
+    "time": "11:56",
+    "user_id": "user_001",
+    "meal_type": "Lunch",
+    "recipe_title": "Amaretto Oriental Salmon",
+    "normalized_title": "amaretto oriental salmon",
+    "target_calories": 904
+  },
+  {
+    "date": "2026-08-02",
+    "time": "11:56",
+    "user_id": "user_001",
+    "meal_type": "Dinner",
+    "recipe_title": "15 Minute No Fry Chicken Enchiladas  Honest",
+    "normalized_title": "15 minute no fry chicken enchiladas  honest",
+    "target_calories": 791
+  },
+  {
+    "date": "2026-08-02",
+    "time": "11:56",
+    "user_id": "user_001",
+    "meal_type": "Breakfast",
+    "recipe_title": "A Very Interesting Smoked Salmon Sandwich",
+    "normalized_title": "a very interesting smoked salmon sandwich",
+    "target_calories": 565
+  },
+  {
+    "date": "2026-08-02",
+    "time": "11:56",
+    "user_id": "user_001",
+    "meal_type": "Lunch",
+    "recipe_title": "24 Hour Green Vegetable Salad",
+    "normalized_title": "24 hour green vegetable salad",
+    "target_calories": 904
+  },
+  {
+    "date": "2026-08-02",
+    "time": "11:56",
+    "user_id": "user_001",
+    "meal_type": "Dinner",
+    "recipe_title": "A Bit Of Everything Chicken Salad",
+    "normalized_title": "a bit of everything chicken salad",
+    "target_calories": 791
+  }
+]

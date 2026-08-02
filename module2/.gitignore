@@ -1,0 +1,64 @@
+# =============================================================================
+# Module 2 — Pose Correction
+# =============================================================================
+# Scoped to this folder.  Git applies a nested .gitignore relative to its own
+# directory, so nothing here can affect module1/ or the repository root.
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+
+# --- Virtual environment ---
+venv/
+.venv/
+env/
+
+# --- Pose model weights -----------------------------------------------------
+# ~6 MB binary, downloaded into models/ on first run from the URL in config.py
+# (MODEL_URL).  Nothing to commit: an absent model is fetched automatically.
+*.task
+*.tflite
+
+# --- Runtime working directories --------------------------------------------
+# outputs/  everything the pipeline produces: desktop-session CSVs, and
+#           outputs/jobs/<id>/ per web analysis (annotated video, CSVs, JSON)
+# uploads/  videos posted to the API, one folder per job
+# Both are recreated on demand by config.py, so only their CONTENTS are
+# ignored; .gitkeep keeps the folders themselves in the tree.
+outputs/*
+uploads/*
+!outputs/.gitkeep
+!uploads/.gitkeep
+!models/.gitkeep
+
+# --- Assets -----------------------------------------------------------------
+# Videos and images are too large for git and stay out.  The AUDIO CUES do not:
+# they are a few hundred KB in total and the module DEPENDS on them — a missing
+# clip degrades every coaching moment to silence, with nothing but a startup
+# warning to say why.
+#
+# The negations have to re-open each directory level, because git will not
+# descend into an excluded directory to find an unexcluded file inside it.
+assets/*
+!assets/audio/
+assets/audio/**
+!assets/audio/**/
+!assets/audio/**/*.mp3
+!assets/audio/**/*.wav
+!assets/audio/**/*.ogg
+!assets/audio/**/*.flac
+!assets/audio/**/*.m4a
+!assets/audio/**/*.aiff
+!assets/audio/**/.gitkeep
+!assets/audio/**/README.md
+
+# --- OS noise ---
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# --- IDE ---
+.vscode/
+.idea/

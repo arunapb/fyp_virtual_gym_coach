@@ -1,0 +1,15 @@
+mediapipe>=0.10.0
+opencv-python>=4.8.0
+pandas>=2.0.0
+matplotlib>=3.7.0
+# Audio feedback layer (Module 2) — non-blocking playback of pre-rendered clips.
+# sounddevice streams NumPy arrays to the speakers; soundfile (libsndfile)
+# decodes the MP3 clips to NumPy at startup, no ffmpeg required.
+sounddevice>=0.5.0
+soundfile>=0.12.0
+
+# Web front end (app.py / api.py) — FastAPI serves the analysis UI in frontend/.
+fastapi>=0.110.0
+uvicorn[standard]>=0.29.0
+# Required by FastAPI to parse the multipart video upload.
+python-multipart>=0.0.9

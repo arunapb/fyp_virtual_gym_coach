@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Nutrition Analysis · Virtual Gym Coach</title>
+<meta name="description" content="Analyse food photos for itemised, energy-consistent nutrition using NutriIngredientNet v6.">
+<!--
+  style.css first (the shared theme: topbar, panels, buttons, dropzone, tiles,
+  tables), then nutrition.css for the handful of things only this page has.
+  Module 4's original demo.html shipped one inline <style> block with generic
+  selectors (.card, .badge, .meta, a bare * reset, bare table rules); those are
+  dropped here in favour of the shared classes so this page and the workout
+  dashboard cannot drift apart.
+-->
+<link rel="stylesheet" href="/static/style.css">
+<link rel="stylesheet" href="/static/nutrition.css">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><text y='26' font-size='26'>%F0%9F%A5%97</text></svg>">
+<!-- Render-blocking on purpose — see auth.js. Demo gate only. -->
+<script src="/static/auth.js"></script>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand">
+    <span class="brand-mark" aria-hidden="true"></span>
+    <div>
+      <h1>Virtual Gym Coach</h1>
+      <p>Nutrition analysis &middot; itemised macros from a single food photo</p>
+    </div>
+  </div>
+  <div class="topbar-actions">
+    <nav class="tabs" aria-label="Sections">
+      <a class="tab" href="/">Workout analysis</a>
+      <a class="tab active" href="/nutrition" aria-current="page">Nutrition</a>
+      <a class="tab" href="/meals">Meal plan</a>
+    </nav>
+    <button id="sign-out" class="ghost-btn small" title="Sign out">Sign out</button>
+  </div>
+</header>
+
+<main>
+<section class="view">
+
+  <!-- ═══════════════════════════ UPLOAD ═══════════════════════════ -->
+  <fieldset class="panel">
+    <legend>Upload a food photo</legend>
+    <p class="hint">Itemised, energy-consistent nutrition from one overhead
+      food photo. Totals are guaranteed exact by Atwater construction.</p>
+
+    <div id="drop" class="dropzone" tabindex="0" role="button"
+         aria-label="Choose a food photo or drop one here">
+      <div class="drop-emoji" aria-hidden="true">🥗</div>
+      <p class="drop-title">Drop a food photo here, or click to browse</p>
+      <p class="hint">JPG, PNG or WebP &middot; up to 15 MB</p>
+      <input type="file" id="file-input" accept="image/*" hidden>
+    </div>
+
+    <div id="preview-wrap" class="preview-wrap" hidden>
+      <img id="preview" alt="Food photo preview">
+      <span class="preview-label">Uploaded image</span>
+      <button type="button" class="ghost-btn small change-btn" id="change-btn">
+        Change photo
+      </button>
+    </div>
+
+    <p id="status" class="status-line"></p>
+  </fieldset>
+
+  <!-- ═══════════════════════════ RESULTS ══════════════════════════ -->
+  <div id="results" hidden>
+
+    <section class="panel">
+      <h2>Nutritional totals</h2>
+      <p class="hint">Estimated for the whole dish.</p>
+      <div class="tiles" id="macros-grid"></div>
+      <div class="meta-row" id="meta-row"></div>
+    </section>
+
+    <section class="panel">
+      <h2>Ingredient breakdown</h2>
+      <p class="hint">Each detected ingredient, sorted by calorie contribution.
+        <span class="pill cert">certain</span> passed the confidence threshold;
+        <span class="pill poss">possible</span> sits below it.</p>
+      <div class="table-scroll">
+        <table id="ing-table">
+          <thead>
+            <tr>
+              <th>Ingredient</th>
+              <th>Grams</th>
+              <th>kcal</th>
+              <th>Fat g</th>
+              <th>Carb g</th>
+              <th>Prot g</th>
+            </tr>
+          </thead>
+          <tbody id="ing-body"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="panel">
+      <p id="acc-box" class="hint acc-box"></p>
+    </section>
+
+  </div><!-- /results -->
+
+</section>
+</main>
+
+<!-- ═══════════════════════ LOADING OVERLAY ═══════════════════════ -->
+<div id="overlay" class="ov">
+  <div class="ov-card">
+    <div class="ring" aria-hidden="true"></div>
+    <div class="ov-title">Analysing your photo</div>
+    <div class="ov-sub" id="ov-sub">Preparing…</div>
+    <div class="steps">
+      <div class="step" id="s1"><span class="si">1</span>Uploading image</div>
+      <div class="step" id="s2"><span class="si">2</span>Running AI inference</div>
+      <div class="step" id="s3"><span class="si">3</span>Building results</div>
+    </div>
+    <div class="elapsed" id="elapsed">0.0 s</div>
+  </div>
+</div>
+
+<script src="/static/nutrition.js"></script>
+</body>
+</html>

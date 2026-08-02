@@ -1,0 +1,15 @@
+# =============================================================================
+# Backend — merged Module 1 + Module 2 app
+# Scoped to this folder, matching module1/.gitignore and module2/.gitignore.
+# =============================================================================
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+
+# --- Virtual environment ---
+venv/
+.venv/
+env/
