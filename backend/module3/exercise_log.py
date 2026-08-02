@@ -57,7 +57,6 @@ exercised. frames / fps is the true in-video duration (and is what app.py's
 import logging
 from datetime import date
 
-from backend import user_store
 from backend.module3 import bridge
 
 log = logging.getLogger("module3.exercise_log")
@@ -99,20 +98,13 @@ def build_entries(durations_seconds, *, weight_kg, day=None,
     return entries
 
 
-def save_session(durations_seconds, *, username=None, day=None,
+def save_session(durations_seconds, *, day=None,
                  min_seconds=MIN_LOGGED_SECONDS):
     """
     Log one finished workout to Module 3 and return the records written.
 
     Called at the end of every analysis — including one the user stopped early
     — from backend/merged_analysis.py.
-
-    `username` is whoever uploaded the video (carried from the stream socket,
-    see backend/main.py). The write is wrapped in `user_store.as_user()` so it
-    lands in THAT person's exercise_logs.json, and so a browser request that
-    switches the active user while the analysis runs cannot misfile it. Their
-    body weight is read inside the same block, for the same reason. With no
-    username the entry goes to Module 3's own shared log, as before.
 
     Never raises. A failure here (Module 3 absent, profile unreadable, log file
     locked) must not fail an analysis that has already completed successfully
@@ -124,17 +116,15 @@ def save_session(durations_seconds, *, username=None, day=None,
         return []
 
     try:
-        with user_store.as_user(username):
-            weight_kg = bridge.profile().get_profile().get("weight_kg") or 70
-            entries = build_entries(durations_seconds, weight_kg=weight_kg,
-                                    day=day, min_seconds=min_seconds)
-            ex_svc = bridge.exercise()
-            for entry in entries:
-                ex_svc.save_exercise_log(entry)
+        weight_kg = bridge.profile().get_profile().get("weight_kg") or 70
+        entries = build_entries(durations_seconds, weight_kg=weight_kg,
+                                day=day, min_seconds=min_seconds)
+        ex_svc = bridge.exercise()
+        for entry in entries:
+            ex_svc.save_exercise_log(entry)
         if entries:
-            log.info("[module3] logged %d exercise entr%s for %s: %s",
+            log.info("[module3] logged %d exercise entr%s: %s",
                      len(entries), "y" if len(entries) == 1 else "ies",
-                     username or "the shared profile",
                      ", ".join(f"{e['exercise_name']} "
                                f"{e['duration_minutes']}min "
                                f"{e['calories_burned']}kcal" for e in entries))

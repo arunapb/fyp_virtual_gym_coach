@@ -53,7 +53,7 @@ from src.ranged import ranged_file_response  # noqa: E402
 from src.session import EXERCISE_REGISTRY, _pretty_label  # noqa: E402
 from src.signal_source import SIGNAL_NULL, SIGNAL_REST  # noqa: E402
 
-from backend import module1_worker, user_store  # noqa: E402
+from backend import module1_worker  # noqa: E402
 from backend.live_session import MergedAnalysisSession  # noqa: E402
 from backend.module3.router import router as meals_router  # noqa: E402
 from backend.module4.router import router as nutrition_router  # noqa: E402
@@ -124,28 +124,6 @@ def create_app() -> FastAPI:
     app.include_router(nutrition_router)
     app.include_router(meals_router)
 
-    # ── Demo users ───────────────────────────────────────────────────────────
-    # Username only, no password, no session — see backend/user_store.py. All
-    # this buys is that two people using the demo do not inherit each other's
-    # workout log, meal preferences and goal weight.
-    @app.post("/api/users/login")
-    def user_login(payload: dict):
-        username = str(payload.get("username", "")).strip()
-        if not username:
-            raise HTTPException(400, "A username is required.")
-        record = user_store.ensure(username)
-        return {
-            "username": record["username"],
-            "slug": record["slug"],
-            # True the first time a name is seen — the browser uses it to say
-            # so, and it is why their log and preferences start empty.
-            "new_user": record["new"],
-        }
-
-    @app.get("/api/users")
-    def users():
-        return {"users": user_store.list_users()}
-
     # ── Metadata ─────────────────────────────────────────────────────────────
     @app.get("/api/exercises")
     def exercises():
@@ -215,11 +193,7 @@ def create_app() -> FastAPI:
 
     # ── Live analysis: Module 1 + Module 2, frame by frame ──────────────────
     @app.websocket("/api/jobs/{job_id}/stream")
-    async def job_stream(websocket: WebSocket, job_id: str, user: str = ""):
-        # `user` is the demo username from the query string — a WebSocket
-        # handshake cannot carry custom headers, which is how every other route
-        # receives it (X-Demo-User). It only decides whose exercise log this
-        # workout lands in; see backend/user_store.py for why this is not auth.
+    async def job_stream(websocket: WebSocket, job_id: str):
         await websocket.accept()
         job = store.get(job_id)
         if job is None or job.video_path is None:
@@ -242,8 +216,7 @@ def create_app() -> FastAPI:
         # (no state carried over from a previous upload) with no explicit
         # reset messaging needed.
         pool = ProcessPoolExecutor(max_workers=1, initializer=module1_worker.init_worker)
-        session = MergedAnalysisSession(store, job, job.video_path, pool,
-                                        MAX_FRAMES, username=(user or "").strip() or None)
+        session = MergedAnalysisSession(store, job, job.video_path, pool, MAX_FRAMES)
         receiver = asyncio.create_task(session.receive(websocket))
         try:
             semaphore = analysis_slot()

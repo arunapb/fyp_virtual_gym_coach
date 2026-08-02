@@ -86,6 +86,7 @@
   const VIEWS = ["view-upload", "view-session", "view-error"];
   function showView(id) {
     VIEWS.forEach((v) => { $(v).hidden = v !== id; });
+    $("new-analysis").hidden = id === "view-upload";
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
@@ -130,9 +131,7 @@
   async function boot() {
     wireUpload();
     wirePlayer();
-    // The topbar's "New analysis" button is gone; the "Workout analysis" tab
-    // is the way back to the upload screen. `resetToUpload` is still the
-    // error view's recovery path.
+    $("new-analysis").addEventListener("click", resetToUpload);
     $("retry-btn").addEventListener("click", resetToUpload);
     $("stop-btn").addEventListener("click", stopAnalysis);
     $("audio-toggle").addEventListener("change", (e) => {
@@ -281,12 +280,7 @@
     $("live-transport").hidden = false;
     $("review-transport").hidden = true;
     $("downloads-panel").hidden = true;
-    $("breakdown-panel").hidden = true;
     $("zone-strip").hidden = true;
-    // Stop is re-armed here, since stopAnalysis() disables it while the server
-    // finishes the frame it is on.
-    $("stop-btn").disabled = false;
-    $("stop-btn").textContent = "Stop";
     $("charts").innerHTML = "";
     $("rep-table").innerHTML = "";
     $("cue-log").innerHTML = "";
@@ -307,13 +301,7 @@
 
   function openStream(jobId) {
     const scheme = location.protocol === "https:" ? "wss:" : "ws:";
-    // The demo username rides in the query string: a WebSocket handshake
-    // cannot carry the X-Demo-User header the other routes use. It decides
-    // only whose exercise log this workout is written to when it finishes.
-    const who = window.Auth ? Auth.username() : "";
-    const query = who ? `?user=${encodeURIComponent(who)}` : "";
-    const socket = new WebSocket(
-      `${scheme}//${location.host}/api/jobs/${jobId}/stream${query}`);
+    const socket = new WebSocket(`${scheme}//${location.host}/api/jobs/${jobId}/stream`);
     socket.binaryType = "arraybuffer";
     state.socket = socket;
 
@@ -340,22 +328,11 @@
     }
   }
 
-  /**
-   * Ask the server to stop, then WAIT.
-   *
-   * This used to close the socket and jump straight back to the upload screen,
-   * throwing away everything that had been analysed. The server now treats
-   * Stop as an ending rather than a failure (backend/merged_analysis.py): it
-   * finishes the frame it is on, closes the video and CSVs, and sends the same
-   * `done` summary a full run sends, covering the part it got through. So the
-   * socket stays open and the normal review flow takes over.
-   */
   function stopAnalysis() {
-    const button = $("stop-btn");
-    button.disabled = true;
-    button.textContent = "Stopping…";
-    $("live-stat").textContent = "Finishing the current frame…";
     sendControl({ type: "stop" });
+    state.mode = "idle";
+    if (state.socket) state.socket.close();
+    resetToUpload();
   }
 
   function onControlMessage(message) {
@@ -368,13 +345,8 @@
           $("shell-placeholder").textContent = "Waiting for the first frame…";
           if (message.signals) { state.signals = message.signals; renderSignalBar(); }
         } else if (message.status === "cancelled") {
-          // The merged pipeline no longer reports this for a user-pressed Stop
-          // — that arrives as a normal `done`. This is the fallback for a job
-          // killed some other way (DELETE /api/jobs/{id}, or a shutdown), and
-          // even then it keeps whatever was collected rather than discarding it.
           state.mode = "idle";
-          if (state.result && state.result.video.frames > 0) enterReview(null);
-          else showFailure("The analysis was cancelled before any frames were read.");
+          resetToUpload();
         }
         break;
       case "meta":
@@ -699,17 +671,14 @@
         `the review copy is downscaled for playback.`
       : "Review copy is at the source resolution.";
 
-    // A clip that hit the frame ceiling, or one the user stopped, was analysed
-    // only up to that point. Saying so matters: every count below — reps, cues,
-    // durations — is a count for the analysed part, not the whole file.
+    // A clip that hit the frame ceiling was analysed only up to that point.
+    // Saying so matters: the rep count below is a count for the analysed part.
     const truncated = $("truncated-badge");
-    truncated.hidden = !(r.video.truncated || r.video.stopped);
-    truncated.textContent = r.video.stopped
-      ? `stopped early · ${r.video.frames.toLocaleString()} frames analysed`
-      : `analysed first ${r.video.frames.toLocaleString()} frames only`;
+    truncated.hidden = !r.video.truncated;
+    truncated.textContent =
+      `analysed first ${r.video.frames.toLocaleString()} frames only`;
 
     renderTiles(r);
-    renderBreakdown(r);
     renderRepTable(r);
     renderCueLog(r);
     buildCharts(r.charts);
@@ -824,95 +793,6 @@
         <div class="tile-value ${t.tone || ""}">${t.value}</div>
         <div class="tile-note">${t.note}</div>
       </div>`).join("");
-  }
-
-  /** 12 -> "12s", 134 -> "2m 14s". Rounded: sub-second precision means nothing here. */
-  function formatDuration(seconds) {
-    const total = Math.max(0, Math.round(seconds || 0));
-    const minutes = Math.floor(total / 60);
-    return minutes
-      ? `${minutes}m ${String(total % 60).padStart(2, "0")}s`
-      : `${total}s`;
-  }
-
-  /** 'bicep_curl' -> 'Bicep curl'. Module 1's labels are snake_case. */
-  function prettyExercise(name) {
-    const text = String(name || "").replace(/_/g, " ");
-    return text.charAt(0).toUpperCase() + text.slice(1);
-  }
-
-  /**
-   * Where the session's time went, split by Module 1's frame-by-frame verdict.
-   *
-   * Every number is `frames / fps`, so it is time IN THE VIDEO — not how long
-   * the server took, and not wall-clock. The bars are shares of the analysed
-   * duration, which is why they add up.
-   */
-  function renderBreakdown(r) {
-    const panel = $("breakdown-panel");
-    const n = r.nutrition;
-    // Results produced before this section existed have no `nutrition` block.
-    if (!n) { panel.hidden = true; return; }
-    panel.hidden = false;
-
-    const kcal = {};
-    (n.log || []).forEach((e) => { kcal[e.exercise_name] = e.calories_burned; });
-
-    const durations = n.durations || {};
-    const rows = Object.keys(durations)
-      .sort((a, b) => durations[b] - durations[a])
-      .map((name) => ({
-        cls: "work",
-        label: prettyExercise(name),
-        seconds: durations[name],
-        note: kcal[name] != null ? `${kcal[name]} kcal` : "",
-      }));
-
-    const worked = rows.reduce((sum, row) => sum + row.seconds, 0);
-    const rest = n.rest_seconds || 0;
-    // `n.idle_seconds` (nobody detected) is deliberately not shown as a row —
-    // it reads as an error message rather than useful information, and this
-    // panel is exactly what fills the empty space under the video once a
-    // session ends or is stopped, so it should read as a clean summary.
-
-    if (rest > 0) {
-      rows.push({ cls: "rest", label: "Rest between sets", seconds: rest, note: "" });
-    }
-
-    const span = Math.max(r.video.duration || 0, worked + rest, 1);
-
-    if (!rows.length) {
-      $("breakdown").innerHTML =
-        `<p class="hint">Module 1 never confirmed an exercise in this clip, so
-         there is no time to attribute.</p>`;
-    } else {
-      $("breakdown").innerHTML = rows.map((row) => `
-        <div class="bd-row">
-          <span class="bd-name">${row.label}</span>
-          <span class="bd-track">
-            <span class="bd-fill bd-${row.cls}" style="width:${
-              Math.min(100, (row.seconds / span) * 100).toFixed(1)}%"></span>
-          </span>
-          <span class="bd-time">${formatDuration(row.seconds)}</span>
-          <span class="bd-note">${row.note}</span>
-        </div>`).join("");
-    }
-
-    const burned = n.calories_burned || 0;
-    const parts = [
-      `<strong>${formatDuration(r.video.duration)}</strong> analysed`,
-      `<strong>${formatDuration(worked)}</strong> exercising`,
-      `<strong>${formatDuration(rest)}</strong> resting`,
-    ];
-    if (burned > 0) {
-      parts.push(`<strong>${burned} kcal</strong> logged to your meal plan`);
-    }
-    $("breakdown").insertAdjacentHTML("beforeend",
-      `<div class="bd-total">${parts.join(" &middot; ")}</div>`);
-
-    $("breakdown-hint").textContent = r.video.stopped
-      ? "You stopped this run early — everything below covers the part that was analysed."
-      : "Measured frame by frame by Module 1, as time in the video.";
   }
 
   function renderRepTable(r) {

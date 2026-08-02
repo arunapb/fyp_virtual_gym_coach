@@ -28,6 +28,7 @@
       <a class="tab" href="/nutrition">Nutrition</a>
       <a class="tab" href="/meals">Meal plan</a>
     </nav>
+    <button id="new-analysis" class="ghost-btn" hidden>New analysis</button>
     <button id="sign-out" class="ghost-btn small" title="Sign out">Sign out</button>
   </div>
 </header>
@@ -270,18 +271,6 @@
   </div>
 
   <div class="tiles" id="summary-tiles"></div>
-
-  <!--
-    Where the session's time actually went, from Module 1's per-frame verdict:
-    how long each exercise was held, how long was spent resting between sets,
-    and the energy Module 3 logged from it. Shown both when a video finishes
-    and when the user stops one early.
-  -->
-  <section class="panel" id="breakdown-panel" hidden>
-    <h2>Session breakdown</h2>
-    <p class="hint" id="breakdown-hint"></p>
-    <div class="breakdown" id="breakdown"></div>
-  </section>
 
   <div class="results-grid">
     <section class="panel">

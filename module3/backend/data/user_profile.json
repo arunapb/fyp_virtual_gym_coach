@@ -3,11 +3,11 @@
   "name": "Emma",
   "age": 24,
   "gender": "female",
-  "weight_kg": 65.0,
-  "height_cm": 173.0,
-  "activity_level": "lightly_active",
+  "weight_kg": 46.0,
+  "height_cm": 160.0,
+  "activity_level": "moderately_active",
   "goal": "weight_gain",
   "meals_per_day": 3,
-  "goal_weight_kg": 70.0,
-  "selected_pace": "faster"
+  "goal_weight_kg": 55.0,
+  "selected_pace": "balanced"
 }

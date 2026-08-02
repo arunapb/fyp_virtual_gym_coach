@@ -31,10 +31,9 @@ whole duration. The first call of each additionally pays the service import
 
 import logging
 
-from fastapi import APIRouter, Depends, Header, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query
 from starlette.concurrency import run_in_threadpool
 
-from backend import user_store
 from backend.module3 import bridge
 from backend.module3.schemas import (
     AspectResult, ExerciseLogEntry, ExerciseLogRequest, ExerciseSummaryResponse,
@@ -46,27 +45,7 @@ from backend.module3.schemas import (
 
 logger = logging.getLogger("module3")
 
-
-def active_user(x_demo_user: str = Header(default="")) -> str:
-    """
-    Point Module 3 at the caller's own profile, preferences, exercise log and
-    history before the handler runs.
-
-    The browser sends `X-Demo-User` on every request (frontend/auth.js). This
-    is NOT authentication — the header is self-asserted and trivially forged;
-    it is how a demo with no accounts keeps several people's data apart. An
-    absent header leaves Module 3 on its own shared files, which is what the
-    interactive API docs and any curl get.
-
-    A dependency rather than middleware so it applies to exactly these routes.
-    """
-    username = (x_demo_user or "").strip()
-    user_store.set_active(username or None)
-    return username
-
-
-router = APIRouter(prefix="/api/meals", tags=["meals"],
-                   dependencies=[Depends(active_user)])
+router = APIRouter(prefix="/api/meals", tags=["meals"])
 
 
 # ════════════════════════════════════════════════════════════════════════════

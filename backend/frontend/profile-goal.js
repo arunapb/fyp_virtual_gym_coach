@@ -51,11 +51,7 @@ window.ProfileGoal = (() => {
 
   // ── HTTP ─────────────────────────────────────────────────────────────────
   async function request(path, options) {
-    // X-Demo-User decides whose profile is read and written; without it the
-    // server falls back to Module 3's shared files. See backend/user_store.py.
-    const opts = Object.assign({}, options);
-    opts.headers = window.Auth ? Auth.headers(opts.headers) : opts.headers;
-    const response = await fetch(API + path, opts);
+    const response = await fetch(API + path, options);
     if (!response.ok) {
       let detail = `${response.status} ${response.statusText}`;
       try {

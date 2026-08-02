@@ -60,7 +60,7 @@
   });
 
   // ── Step 1: credentials ──────────────────────────────────────────────────
-  $("login-form").addEventListener("submit", async (event) => {
+  $("login-form").addEventListener("submit", (event) => {
     event.preventDefault();
     const username = $("username").value.trim();
     const password = $("password").value;
@@ -74,16 +74,7 @@
     }
 
     error.hidden = true;
-    const button = event.target.querySelector("button[type='submit']");
-    button.disabled = true;
-
-    // Claims the name server-side, creating an empty data folder if it is new.
-    const record = await Auth.signIn(username);
-    button.disabled = false;
-
-    if (record.new_user) {
-      toast(`Welcome, ${record.username} — starting you a fresh profile.`);
-    }
+    Auth.signIn(username);
     openGoalSetup();
   });
 
