@@ -23,6 +23,7 @@
     <nav class="tabs" aria-label="Sections">
       <a class="tab active" href="/" aria-current="page">Workout analysis</a>
       <a class="tab" href="/nutrition">Nutrition</a>
+      <a class="tab" href="/meals">Meal plan</a>
     </nav>
     <button id="new-analysis" class="ghost-btn" hidden>New analysis</button>
   </div>
@@ -75,8 +76,9 @@
     </button>
   </form>
 
-  <!-- Module 4 lives on its own page — a separate tool, not part of the
-       workout pipeline. This card is the way in from the landing page. -->
+  <!-- Modules 4 and 3 live on their own pages — separate tools, not steps in
+       the workout pipeline. These cards are the way in from the landing page.
+       Each takes half the column's height, stacked. -->
   <aside class="landing-aside">
     <a class="feature-card" href="/nutrition">
       <span class="feature-glow" aria-hidden="true"></span>
@@ -100,6 +102,32 @@
 
       <span class="feature-cta">
         Open nutrition analysis
+        <span class="feature-go" aria-hidden="true">→</span>
+      </span>
+    </a>
+
+    <a class="feature-card feature-card--meals" href="/meals">
+      <span class="feature-glow" aria-hidden="true"></span>
+
+      <span class="feature-head">
+        <span class="feature-icon" aria-hidden="true">🍽️</span>
+        <span class="feature-tag">Module 3</span>
+      </span>
+
+      <span class="feature-title">Meal plan</span>
+      <span class="feature-desc">
+        A daily Breakfast / Lunch / Dinner plan built around your goal weight,
+        your tastes, and the workouts you analyse here.
+      </span>
+
+      <ul class="feature-list">
+        <li>Calorie &amp; protein targets from BMR, TDEE and pace</li>
+        <li>Recipes retrieved by BM25 + FAISS, MMR-diversified</li>
+        <li>Learns from plain-English feedback on your meals</li>
+      </ul>
+
+      <span class="feature-cta">
+        Open meal plan
         <span class="feature-go" aria-hidden="true">→</span>
       </span>
     </a>

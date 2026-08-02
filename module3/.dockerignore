@@ -1,0 +1,29 @@
+# ── Secrets — NEVER bake into image ───────────────────────────────────────────
+.env
+
+# ── Python cache ──────────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+
+# ── Virtual environments ───────────────────────────────────────────────────────
+venv/
+.venv/
+env/
+
+# ── Evaluation / dev-only scripts (not needed at runtime) ─────────────────────
+evaluation/
+
+# ── Git internals ─────────────────────────────────────────────────────────────
+.git/
+.gitignore
+*.gitignore*
+
+# ── IDE / OS files ────────────────────────────────────────────────────────────
+.vscode/
+.idea/
+*.DS_Store
+Thumbs.db
+

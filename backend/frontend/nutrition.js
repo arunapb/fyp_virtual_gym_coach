@@ -211,7 +211,8 @@
         <td>${i.protein}</td>
       </tr>`).join("");
 
-    $("warn-box").textContent = "⚠ " + d.warning;
+    // `d.warning` (the fixed-camera-rig / not-medical-advice notice) is still
+    // returned by the API; it is deliberately not rendered.
     $("acc-box").textContent =
       `Typical error on the Nutrition5k test split: ±${d.accuracy.test_kcal_mae} kcal `
       + `(${d.accuracy.test_kcal_mae_pct}%). ${d.accuracy.note}`;

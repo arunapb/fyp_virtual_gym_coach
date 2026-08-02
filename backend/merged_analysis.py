@@ -70,6 +70,7 @@ from src.analysis import (
 
 from backend import module1_worker
 from backend.calibration_bank import CalibrationBank
+from backend.module3 import exercise_log
 from backend.signal_mapping import map_signal
 
 _IDLE_MODULE1 = {"state": "null", "exercise": None, "label": None,
@@ -138,6 +139,17 @@ def analyse_stream_merged(video_path, pool, out_dir, *, stream_frames=False,
     calib_bank = CalibrationBank()
     m1_last = dict(_IDLE_MODULE1)
 
+    # Module 1's per-exercise duration tally — the measurement its standalone
+    # app.py exported to data/session_summary.json ("Export exercise durations
+    # for Module 3"), counted in FRAMES here and converted with the video's own
+    # fps (app.py used a hardcoded frames / 30.0). `GymCoachSession` keeps its
+    # own `exercise_durations`, but off `time.time()`: correct for a live
+    # webcam, meaningless here, where frames run as fast as the CPU allows and
+    # so would measure server effort rather than exercise. See
+    # backend/module3/exercise_log.py.
+    m1_active_frames = {}
+    logged_exercise = []
+
     yield {
         "type": EVENT_META,
         "fps": round(fps, 3),
@@ -172,6 +184,14 @@ def analyse_stream_merged(video_path, pool, out_dir, *, stream_frames=False,
                 m1 = _run_module1(pool, frame, m1_last)
                 m1_last = m1
                 signal = map_signal(m1["state"], m1["exercise"], m1.get("early_guess"))
+
+                # Only a CONFIRMED exercise while genuinely active counts
+                # towards the log — `early_guess` is explicitly a not-yet-
+                # locked hypothesis (it exists to give Module 2's calibration a
+                # head start) and must not be billed as exercise time.
+                if m1["state"] == "active" and m1["exercise"]:
+                    m1_active_frames[m1["exercise"]] = \
+                        m1_active_frames.get(m1["exercise"], 0) + 1
 
                 # ── Module-1 signal, and the segment boundary it may open ──
                 if signal != last_signal:
@@ -316,6 +336,18 @@ def analyse_stream_merged(video_path, pool, out_dir, *, stream_frames=False,
         writer.release()
         csv_log.close()
         audio.shutdown()
+        # Hand the session to Module 3: MET-based calories, appended to its
+        # exercise_logs.json, which feeds the 7-day average behind the next
+        # meal plan.
+        #
+        # In `finally`, not after the loop, because "the session is over"
+        # includes the user pressing Stop — that path raises AnalysisCancelled
+        # and unwinds straight past everything below. This block is the only
+        # place both endings pass through. `save_session` never raises (see its
+        # docstring): a nutrition-log failure must not sink an analysis whose
+        # video, CSVs and results are already written.
+        logged_exercise = exercise_log.save_session(
+            {ex: n / fps for ex, n in m1_active_frames.items()} if fps else {})
 
     if open_segment is not None:
         open_segment.update(_segment_snapshot(open_segment, sessionc,
@@ -368,6 +400,22 @@ def analyse_stream_merged(video_path, pool, out_dir, *, stream_frames=False,
             "reps": merged,
             "zones": {"counts": zone_counts},
             "cues": cues,
+            # What Module 1 measured, and what Module 3 made of it. Both are
+            # reported so the browser can show the hand-off rather than the
+            # log silently appearing in a JSON file: `durations` is the raw
+            # per-exercise active time, `log` is the records actually appended
+            # to module3/backend/data/exercise_logs.json (empty when nothing
+            # cleared exercise_log.MIN_LOGGED_SECONDS, or if Module 3 was
+            # unreachable).
+            "nutrition": {
+                "durations": ({ex: round(n / fps, 2)
+                               for ex, n in m1_active_frames.items()}
+                              if fps else {}),
+                "active_frames": dict(m1_active_frames),
+                "log": logged_exercise,
+                "calories_burned": round(
+                    sum(e["calories_burned"] for e in logged_exercise), 2),
+            },
             "charts": series.charts_for(dominant or ""),
             "segments": [{k: v for k, v in s.items()} for s in segments],
             "artifacts": {

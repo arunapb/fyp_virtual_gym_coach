@@ -773,6 +773,20 @@
         note: `${r.processing.realtime_ratio}x real time · ${r.processing.seconds}s total` },
     ];
 
+    // What went to Module 3. Absent on results produced before that hand-off
+    // existed, so this is additive rather than assumed.
+    if (r.nutrition) {
+      const log = r.nutrition.log || [];
+      tiles.push(log.length
+        ? { label: "Energy burned", value: `${r.nutrition.calories_burned} kcal`,
+            tone: "good",
+            note: `${log.map((e) => `${e.exercise_name.replace(/_/g, " ")} ` +
+                                    `${e.duration_minutes} min`).join(" · ")} · ` +
+                  `logged to your meal plan` }
+        : { label: "Energy burned", value: "not logged",
+            note: "no exercise was held long enough to record" });
+    }
+
     $("summary-tiles").innerHTML = tiles.map((t) => `
       <div class="tile">
         <div class="tile-label">${t.label}</div>

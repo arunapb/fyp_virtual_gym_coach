@@ -1,0 +1,20 @@
+{
+  "label2id": {
+    "O": 0,
+    "B-POS": 1,
+    "I-POS": 2,
+    "B-NEG": 3,
+    "I-NEG": 4,
+    "B-NEU": 5,
+    "I-NEU": 6
+  },
+  "id2label": {
+    "0": "O",
+    "1": "B-POS",
+    "2": "I-POS",
+    "3": "B-NEG",
+    "4": "I-NEG",
+    "5": "B-NEU",
+    "6": "I-NEU"
+  }
+}

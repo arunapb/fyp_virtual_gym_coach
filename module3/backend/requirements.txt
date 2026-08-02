@@ -1,0 +1,22 @@
+fastapi
+uvicorn[standard]
+pydantic>=2.0
+python-dotenv
+
+# ML / NLP
+torch
+transformers
+sentence-transformers
+spacy
+vaderSentiment
+
+# Retrieval
+faiss-cpu
+rank-bm25
+
+# Data
+numpy
+pandas
+
+# Cloud
+qdrant-client

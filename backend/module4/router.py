@@ -1,7 +1,7 @@
 """
-backend/module4/router.py — Module 4's HTTP surface on the shared server.
+backend/module3/router.py — Module 3's HTTP surface on the shared server.
 
-`module4/app.py` registered its routes as decorators on its own module-level
+`module3/app.py` registered its routes as decorators on its own module-level
 `FastAPI()` instance, at `/`, `/health` and `/predict`. Two changes were
 needed to host it alongside Modules 1 and 2:
 

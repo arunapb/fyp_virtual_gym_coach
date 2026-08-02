@@ -1,0 +1,40 @@
+# Virtual Environment
+venv/
+env/
+.venv/
+
+# Python cache
+**/__pycache__/
+*.pyc
+*.pyo
+
+# Environment variables & secret keys
+.env
+*.env
+
+# Machine Learning model binaries (>100MB limit on GitHub)
+ml_models/
+**/ml_models/
+*.safetensors
+*.bin
+*.h5
+*.pth
+*.pt
+*.onnx
+
+# Large raw datasets (>100MB limit on GitHub)
+backend/data/RAW_recipes.csv
+**/RAW_recipes.csv
+*.csv
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Hyperparameter experiment results/images (regenerable outputs, not source)
+backend/hyperparameter_output/*.png
+backend/hyperparameter_output/*.json
+exp1_alpha_results.png
+exp2_threshold1_results.png
+exp3_threshold2_results.png
+hyperparameter_results.json
