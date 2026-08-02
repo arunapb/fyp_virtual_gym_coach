@@ -35,10 +35,14 @@ class _NoopSignal:
 
 
 class MergedAnalysisSession(LiveAnalysisSession):
-    def __init__(self, store, job, video_path, pool, max_frames):
+    def __init__(self, store, job, video_path, pool, max_frames, username=None):
         super().__init__(store, job, video_path, signal_source=_NoopSignal())
         self._pool = pool
         self._max_frames = max_frames
+        # Whoever opened this socket. Carried only so the finished workout is
+        # filed against their exercise log (backend/module3/exercise_log.py);
+        # nothing in the analysis itself varies by user.
+        self._username = username
 
     def _produce(self):
         try:
@@ -46,6 +50,7 @@ class MergedAnalysisSession(LiveAnalysisSession):
                 self.video_path, self._pool, self.job.directory,
                 stream_frames=True, progress=self._progress,
                 should_cancel=self.cancel.is_set, max_frames=self._max_frames,
+                username=self._username,
             ):
                 if event["type"] == EVENT_DONE:
                     self.store.record_result(self.job, event["result"])

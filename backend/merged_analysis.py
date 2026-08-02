@@ -63,10 +63,14 @@ from src.session import EXERCISE_REGISTRY, SessionController
 from src.video_io import AnnotatedVideoWriter
 from src.view_detection import ViewDetector
 from src.analysis import (
-    EVENT_DONE, EVENT_FRAME, EVENT_META, AnalysisCancelled,
+    EVENT_DONE, EVENT_FRAME, EVENT_META,
     _dominant_exercise, _encode_preview, _merge_reps,
     _metrics, _segment_snapshot, probe_video,
 )
+# NOTE: module2's `AnalysisCancelled` is deliberately NOT raised here — see the
+# cancel check inside the frame loop. `live_session.py` still catches it, which
+# is now a dead branch for this generator but harmless, and correct if that
+# base class is ever driven by module2's own `analyse_stream()`.
 
 from backend import module1_worker
 from backend.calibration_bank import CalibrationBank
@@ -97,7 +101,8 @@ def _run_module1(pool, frame, last_result):
 
 
 def analyse_stream_merged(video_path, pool, out_dir, *, stream_frames=False,
-                          progress=None, should_cancel=None, max_frames=None):
+                          progress=None, should_cancel=None, max_frames=None,
+                          username=None):
     """
     Analyse one uploaded video, yielding each frame's findings as it finishes,
     with Module 1 driving Module 2's signal on the same frame Module 2 itself
@@ -148,7 +153,12 @@ def analyse_stream_merged(video_path, pool, out_dir, *, stream_frames=False,
     # so would measure server effort rather than exercise. See
     # backend/module3/exercise_log.py.
     m1_active_frames = {}
+    # Every frame, by Module 1's verdict — 'active' / 'rest' / 'null'. Rest is
+    # what the browser shows as total rest time; 'null' is "nobody tracked",
+    # which is not rest and is reported separately.
+    m1_state_frames = {"active": 0, "rest": 0, "null": 0}
     logged_exercise = []
+    stopped = False
 
     yield {
         "type": EVENT_META,
@@ -164,8 +174,15 @@ def analyse_stream_merged(video_path, pool, out_dir, *, stream_frames=False,
     try:
         with create_landmarker() as landmarker:
             while True:
+                # Stop is an ENDING, not a failure. Breaking out (rather than
+                # raising AnalysisCancelled, which unwinds past everything
+                # below) means a stopped run still produces its result
+                # document, annotated video and CSVs for the part that was
+                # analysed — so the browser can show the session instead of
+                # throwing it away and returning to the upload screen.
                 if should_cancel is not None and should_cancel():
-                    raise AnalysisCancelled()
+                    stopped = True
+                    break
                 ok, frame = cap.read()
                 if not ok:
                     break                     # straight through, no rewind
@@ -189,6 +206,7 @@ def analyse_stream_merged(video_path, pool, out_dir, *, stream_frames=False,
                 # towards the log — `early_guess` is explicitly a not-yet-
                 # locked hypothesis (it exists to give Module 2's calibration a
                 # head start) and must not be billed as exercise time.
+                m1_state_frames[m1["state"]] = m1_state_frames.get(m1["state"], 0) + 1
                 if m1["state"] == "active" and m1["exercise"]:
                     m1_active_frames[m1["exercise"]] = \
                         m1_active_frames.get(m1["exercise"], 0) + 1
@@ -347,7 +365,8 @@ def analyse_stream_merged(video_path, pool, out_dir, *, stream_frames=False,
         # docstring): a nutrition-log failure must not sink an analysis whose
         # video, CSVs and results are already written.
         logged_exercise = exercise_log.save_session(
-            {ex: n / fps for ex, n in m1_active_frames.items()} if fps else {})
+            {ex: n / fps for ex, n in m1_active_frames.items()} if fps else {},
+            username=username)
 
     if open_segment is not None:
         open_segment.update(_segment_snapshot(open_segment, sessionc,
@@ -373,6 +392,9 @@ def analyse_stream_merged(video_path, pool, out_dir, *, stream_frames=False,
                 "scaled": writer.scaled,
                 "duration": round(frame_id / fps, 2) if fps else 0.0,
                 "truncated": truncated,
+                # The user pressed Stop. Everything in this document is real,
+                # it just covers fewer frames than the file holds.
+                "stopped": stopped,
             },
             "processing": {
                 "seconds": round(elapsed, 2),
@@ -412,6 +434,14 @@ def analyse_stream_merged(video_path, pool, out_dir, *, stream_frames=False,
                                for ex, n in m1_active_frames.items()}
                               if fps else {}),
                 "active_frames": dict(m1_active_frames),
+                # Time spent between sets, and time with nobody tracked. Kept
+                # apart because they mean different things: 'rest' is the user
+                # recovering, 'null' is the pose model seeing no one.
+                "rest_seconds": (round(m1_state_frames["rest"] / fps, 2)
+                                 if fps else 0.0),
+                "idle_seconds": (round(m1_state_frames["null"] / fps, 2)
+                                 if fps else 0.0),
+                "state_frames": dict(m1_state_frames),
                 "log": logged_exercise,
                 "calories_burned": round(
                     sum(e["calories_burned"] for e in logged_exercise), 2),

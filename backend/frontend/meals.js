@@ -63,7 +63,11 @@
 
   /** fetch + JSON + a usable error message. FastAPI puts its reason in `detail`. */
   async function api(path, options) {
-    const response = await fetch(API + path, options);
+    // X-Demo-User picks whose profile, preferences, exercise log and history
+    // this reads and writes. See backend/user_store.py.
+    const opts = Object.assign({}, options);
+    opts.headers = window.Auth ? Auth.headers(opts.headers) : opts.headers;
+    const response = await fetch(API + path, opts);
     if (!response.ok) {
       let detail = `${response.status} ${response.statusText}`;
       try {

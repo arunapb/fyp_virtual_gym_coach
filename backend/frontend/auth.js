@@ -25,11 +25,49 @@ window.Auth = (() => {
 
   const signedIn = () => sessionStorage.getItem(KEY) !== null;
 
-  function signIn(username) {
+  /**
+   * Claim a username and make sure the server has a data folder for it.
+   *
+   * Resolves to `{ new_user }` — true the first time a name is used, which is
+   * when the workout log and preference vector start empty (see
+   * backend/user_store.py).
+   */
+  async function signIn(username) {
+    const name = (username || "demo").trim() || "demo";
+    let record = { username: name, new_user: false };
+    try {
+      const response = await fetch("/api/users/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username: name }),
+      });
+      if (response.ok) record = await response.json();
+    } catch (e) {
+      // Offline or the route is missing: still let them in — this is a demo
+      // gate, and the server falls back to its shared data files anyway.
+    }
     sessionStorage.setItem(KEY, JSON.stringify({
-      username: username || "demo",
+      username: record.username || name,
+      newUser: !!record.new_user,
       at: new Date().toISOString(),
     }));
+    return record;
+  }
+
+  /** The username to send with API calls, or "" when signed out. */
+  function username() {
+    const current = user();
+    return (current && current.username) || "";
+  }
+
+  /**
+   * Every Module 3 request must say who it is for, or it reads the shared
+   * files instead of this user's. A WebSocket handshake cannot carry custom
+   * headers, so app.js puts the same value in the query string instead.
+   */
+  function headers(extra) {
+    const name = username();
+    return Object.assign({}, extra, name ? { "X-Demo-User": name } : {});
   }
 
   function user() {
@@ -65,7 +103,7 @@ window.Auth = (() => {
     if (label && current && current.username) label.textContent = current.username;
   }
 
-  return { guard, signIn, signOut, signedIn, user, wireControls };
+  return { guard, signIn, signOut, signedIn, user, username, headers, wireControls };
 })();
 
 // The three app pages load this in <head> to gate themselves. The login page

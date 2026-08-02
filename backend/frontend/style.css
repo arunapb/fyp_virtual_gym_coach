@@ -488,3 +488,45 @@ tbody tr:hover { background: var(--surface-2); }
   font-size: 0.76rem; color: var(--text-muted); text-align: right;
   font-variant-numeric: tabular-nums;
 }
+
+/* ── Session breakdown (Module 1 durations + Module 3 energy) ─────────────── */
+/* Where the session's time went. Each bar is a share of the analysed duration,
+   so the rows add up to the clip. Colours reuse the state palette already used
+   by the Module 1 readout above: active = good, rest = warning, untracked =
+   muted, so the same thing is the same colour in both places. */
+.breakdown { display: flex; flex-direction: column; gap: 0.45rem; }
+
+.bd-row {
+  display: grid;
+  grid-template-columns: minmax(7rem, 10rem) minmax(60px, 1fr) 4.5rem auto;
+  align-items: center; gap: 0.7rem;
+}
+.bd-name { font-size: 0.88rem; font-weight: 500; }
+.bd-track {
+  height: 9px; border-radius: 999px; background: var(--surface-3);
+  border: 1px solid var(--border); overflow: hidden;
+}
+.bd-fill { display: block; height: 100%; border-radius: 999px; }
+.bd-work { background: var(--status-good); }
+.bd-rest { background: var(--status-warning); }
+.bd-idle { background: var(--text-muted); }
+.bd-time {
+  font-size: 0.86rem; text-align: right;
+  font-variant-numeric: tabular-nums; color: var(--text-primary);
+}
+.bd-note { font-size: 0.78rem; color: var(--text-muted); white-space: nowrap; }
+
+.bd-total {
+  margin-top: 0.35rem; padding-top: 0.7rem;
+  border-top: 1px solid var(--border);
+  font-size: 0.85rem; color: var(--text-secondary);
+}
+.bd-total strong { color: var(--text-primary); font-variant-numeric: tabular-nums; }
+
+/* The bar carries no information the numbers beside it do not, so it is the
+   first thing to go when there is no room for it. */
+@media (max-width: 620px) {
+  .bd-row { grid-template-columns: 1fr 4.5rem; }
+  .bd-track { display: none; }
+  .bd-note { grid-column: 1 / -1; }
+}

@@ -89,6 +89,13 @@ def load(name: str):
         if module is None:
             ensure_path()
             module = importlib.import_module(f"services.{name}")
+            # A service resolves its data file at import time into a module
+            # constant. If a user is active, that constant has to be repointed
+            # at their copy before anything reads it — otherwise the first call
+            # after a lazy import would hit Module 3's shared files. Imported
+            # here rather than at module scope: user_store imports this module.
+            from backend import user_store
+            user_store.apply_paths(name, module)
             _modules[name] = module
         return module
 
