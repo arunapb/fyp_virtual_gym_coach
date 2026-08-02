@@ -75,16 +75,12 @@
     return response.status === 204 ? null : response.json();
   }
 
-  function jsonBody(payload) {
+  function postBody(payload) {
     return {
-      method: "PUT",
+      method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
     };
-  }
-
-  function postBody(payload) {
-    return { ...jsonBody(payload), method: "POST" };
   }
 
   function busy(container, message) {
@@ -156,107 +152,22 @@
     document.body.style.overflow = "";
   }
 
-  function openProfileModal() {
-    const p = cachedProfile || {};
-    $("modal-weight").value = p.weight_kg ?? "";
-    $("modal-height").value = p.height_cm ?? "";
-    $("modal-activity").value = p.activity_level || "sedentary";
-    $("modal-goal-weight").value = p.goal_weight_kg ?? "";
-    openModal("profile-modal");
-    weightsChanged();
-  }
-
-  /** Shows the pace picker once both weights are usable. */
-  function weightsChanged() {
-    const current = parseFloat($("modal-weight").value);
-    const goal = parseFloat($("modal-goal-weight").value);
-    if (!current || current <= 0 || !goal || goal <= 0) {
-      $("modal-goal-section").hidden = true;
-      return;
-    }
-    fetchGoalOptions(current, goal);
-  }
-
-  async function fetchGoalOptions(currentWeight, goalWeight) {
-    try {
-      // Push the typed weight first, so kg_to_change is computed against what
-      // is on screen rather than the last saved value.
-      await api("/profile", jsonBody({ weight_kg: currentWeight }));
-      renderGoalPanel(await api("/goal/options", postBody({ goal_weight_kg: goalWeight })));
-    } catch (err) {
-      toast("Could not work out your goal: " + err.message, true);
-    }
-  }
-
-  function renderGoalPanel(data) {
-    const section = $("modal-goal-section");
-    section.hidden = false;
-
-    if (data.already_at_goal) {
-      $("goal-summary").innerHTML = "<strong>You're already at your goal weight.</strong>";
-      $("goal-pace-selector").innerHTML = "";
-      $("goal-safe-note").hidden = true;
-      return;
-    }
-
-    $("goal-safe-note").hidden = false;
-    $("goal-summary").innerHTML =
-      `You want to <strong>${data.is_loss ? "lose" : "gain"} ${esc(data.kg_to_change)} kg</strong>.`;
-
-    $("goal-pace-selector").innerHTML = data.pace_options.map((opt) => `
-      <label class="pace-option ${opt.is_default ? "selected" : ""}" data-pace-key="${esc(opt.key)}">
-        <input type="radio" name="pace-option" value="${esc(opt.key)}"
-               ${opt.is_default ? "checked" : ""}>
-        <span>
-          <span class="pace-label">${esc(opt.label)}</span>
-          <span class="pace-meta">${opt.kcal_per_day} kcal/day &middot;
-            ~${opt.estimated_weeks} weeks (${opt.estimated_months} months)</span>
-        </span>
-      </label>`).join("");
-
-    $("goal-pace-selector").querySelectorAll("input[name='pace-option']")
-      .forEach((input) => input.addEventListener("change", () => selectPace(input.value)));
-  }
-
-  async function selectPace(pace) {
-    document.querySelectorAll(".pace-option").forEach((el) => {
-      el.classList.toggle("selected", el.dataset.paceKey === pace);
-    });
-    try {
-      const data = await api("/goal/select-pace", postBody({ pace }));
-      toast(`Pace set to ${PACE_LABELS[pace] || pace} — ${data.new_daily_target} kcal/day`);
-      loadProfile();
-      fetchRecommendations();
-    } catch (err) {
-      toast("Could not set that pace: " + err.message, true);
-    }
-  }
-
-  async function saveProfile(event) {
-    event.preventDefault();
-    const weight_kg = parseFloat($("modal-weight").value);
-    const height_cm = parseFloat($("modal-height").value);
-    const activity_level = $("modal-activity").value;
-    const goalRaw = $("modal-goal-weight").value;
-    const goal_weight_kg = goalRaw ? parseFloat(goalRaw) : null;
-
-    if (!weight_kg || weight_kg <= 0 || !height_cm || height_cm <= 0) {
-      toast("Enter a valid weight and height.", true);
-      return;
-    }
-
-    try {
-      await api("/profile", jsonBody({ weight_kg, height_cm, activity_level }));
-      if (goal_weight_kg && goal_weight_kg > 0) {
-        await api("/goal/options", postBody({ goal_weight_kg }));
-      }
+  // The dialog itself — fields, pace picker, and the writes to
+  // user_profile.json — is profile-goal.js, shared verbatim with the login
+  // page's mandatory onboarding popup so the two cannot drift.
+  ProfileGoal.mount({
+    notify: toast,
+    onSaved: async () => {
       toast("Profile updated.");
       closeModal("profile-modal");
       await loadProfile();
       fetchRecommendations();
-    } catch (err) {
-      toast("Could not save your profile: " + err.message, true);
-    }
+    },
+  });
+
+  function openProfileModal() {
+    ProfileGoal.fill(cachedProfile || {});
+    openModal("profile-modal");
   }
 
   // ── Recommendations ──────────────────────────────────────────────────────
@@ -480,10 +391,8 @@
   $("clear-history-btn").addEventListener("click", clearHistoryAndFetch);
   $("reset-prefs-btn").addEventListener("click", resetPreferences);
 
-  $("profile-form").addEventListener("submit", saveProfile);
+  // #profile-form and the two weight fields are wired by ProfileGoal.mount().
   $("feedback-form").addEventListener("submit", submitFeedback);
-  $("modal-weight").addEventListener("change", weightsChanged);
-  $("modal-goal-weight").addEventListener("change", weightsChanged);
 
   document.querySelectorAll(".presets .chip").forEach((chip) => {
     chip.addEventListener("click", () => {

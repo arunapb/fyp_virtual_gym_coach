@@ -16,6 +16,8 @@
 <link rel="stylesheet" href="/static/style.css">
 <link rel="stylesheet" href="/static/nutrition.css">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><text y='26' font-size='26'>%F0%9F%A5%97</text></svg>">
+<!-- Render-blocking on purpose — see auth.js. Demo gate only. -->
+<script src="/static/auth.js"></script>
 </head>
 <body>
 
@@ -27,11 +29,14 @@
       <p>Nutrition analysis &middot; itemised macros from a single food photo</p>
     </div>
   </div>
-  <nav class="tabs" aria-label="Sections">
-    <a class="tab" href="/">Workout analysis</a>
-    <a class="tab active" href="/nutrition" aria-current="page">Nutrition</a>
-    <a class="tab" href="/meals">Meal plan</a>
-  </nav>
+  <div class="topbar-actions">
+    <nav class="tabs" aria-label="Sections">
+      <a class="tab" href="/">Workout analysis</a>
+      <a class="tab active" href="/nutrition" aria-current="page">Nutrition</a>
+      <a class="tab" href="/meals">Meal plan</a>
+    </nav>
+    <button id="sign-out" class="ghost-btn small" title="Sign out">Sign out</button>
+  </div>
 </header>
 
 <main>
