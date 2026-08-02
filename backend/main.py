@@ -98,6 +98,14 @@ def create_app() -> FastAPI:
     def index():
         return FileResponse(os.path.join(BACKEND_FRONTEND_DIR, "index.html"))
 
+    # Demo sign-in screen. There is NO server-side auth behind this — it is a
+    # browser-only gate (frontend/auth.js) that exists to open the demo on a
+    # login and to give the mandatory goal-setup popup a moment to appear.
+    # Every route on this server, including this one, is open.
+    @app.get("/login", response_class=HTMLResponse)
+    def login_page():
+        return FileResponse(os.path.join(BACKEND_FRONTEND_DIR, "login.html"))
+
     # ── Modules 3 and 4: their own pages, not part of the Module 1 + ────────
     # Module 2 workout pipeline. They share this server and nothing else.
     #

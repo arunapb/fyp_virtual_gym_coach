@@ -8,6 +8,9 @@
 <!-- .tabs lives in nutrition.css, which both pages share for the nav. -->
 <link rel="stylesheet" href="/static/nutrition.css">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><text y='26' font-size='26'>%F0%9F%8F%8B</text></svg>">
+<!-- Render-blocking on purpose: redirects a signed-out visitor to /login
+     before the dashboard paints. Demo gate only — see auth.js. -->
+<script src="/static/auth.js"></script>
 </head>
 <body>
 
@@ -26,6 +29,7 @@
       <a class="tab" href="/meals">Meal plan</a>
     </nav>
     <button id="new-analysis" class="ghost-btn" hidden>New analysis</button>
+    <button id="sign-out" class="ghost-btn small" title="Sign out">Sign out</button>
   </div>
 </header>
 

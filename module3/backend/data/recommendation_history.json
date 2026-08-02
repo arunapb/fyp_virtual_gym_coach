@@ -430,5 +430,167 @@
     "recipe_title": "Almond Crusted Salmon",
     "normalized_title": "almond crusted salmon",
     "target_calories": 618
+  },
+  {
+    "date": "2026-08-02",
+    "time": "11:39",
+    "user_id": "user_001",
+    "meal_type": "Breakfast",
+    "recipe_title": "Lee's Salmon Baste",
+    "normalized_title": "lee's salmon baste",
+    "target_calories": 441
+  },
+  {
+    "date": "2026-08-02",
+    "time": "11:39",
+    "user_id": "user_001",
+    "meal_type": "Lunch",
+    "recipe_title": "Alex S Favorite Beef And Cheese Pie",
+    "normalized_title": "alex s favorite beef and cheese pie",
+    "target_calories": 706
+  },
+  {
+    "date": "2026-08-02",
+    "time": "11:39",
+    "user_id": "user_001",
+    "meal_type": "Dinner",
+    "recipe_title": "Acadia S Salmon Mushroom Stir Fry",
+    "normalized_title": "acadia s salmon mushroom stir fry",
+    "target_calories": 618
+  },
+  {
+    "date": "2026-08-02",
+    "time": "11:40",
+    "user_id": "user_001",
+    "meal_type": "Breakfast",
+    "recipe_title": "Salmon with Brown Sugar and Bourbon Glaze",
+    "normalized_title": "salmon with brown sugar and bourbon glaze",
+    "target_calories": 578
+  },
+  {
+    "date": "2026-08-02",
+    "time": "11:40",
+    "user_id": "user_001",
+    "meal_type": "Lunch",
+    "recipe_title": "Salmon Fillets with Creamy Dill",
+    "normalized_title": "salmon fillets with creamy dill",
+    "target_calories": 925
+  },
+  {
+    "date": "2026-08-02",
+    "time": "11:40",
+    "user_id": "user_001",
+    "meal_type": "Dinner",
+    "recipe_title": "Anita S Cheese And Potato Beef Pie",
+    "normalized_title": "anita s cheese and potato beef pie",
+    "target_calories": 810
+  },
+  {
+    "date": "2026-08-02",
+    "time": "11:41",
+    "user_id": "user_001",
+    "meal_type": "Breakfast",
+    "recipe_title": "Alaskan Salmon Dip",
+    "normalized_title": "alaskan salmon dip",
+    "target_calories": 649
+  },
+  {
+    "date": "2026-08-02",
+    "time": "11:41",
+    "user_id": "user_001",
+    "meal_type": "Lunch",
+    "recipe_title": "Apple Braised Salmon With Citrus Spiced Couscous",
+    "normalized_title": "apple braised salmon with citrus spiced couscous",
+    "target_calories": 1038
+  },
+  {
+    "date": "2026-08-02",
+    "time": "11:41",
+    "user_id": "user_001",
+    "meal_type": "Dinner",
+    "recipe_title": "Bacon Cheeseburger And Fries  Soup",
+    "normalized_title": "bacon cheeseburger and fries  soup",
+    "target_calories": 909
+  },
+  {
+    "date": "2026-08-02",
+    "time": "11:56",
+    "user_id": "user_001",
+    "meal_type": "Breakfast",
+    "recipe_title": "Alaskan Smoked Salmon Sauce",
+    "normalized_title": "alaskan smoked salmon sauce",
+    "target_calories": 565
+  },
+  {
+    "date": "2026-08-02",
+    "time": "11:56",
+    "user_id": "user_001",
+    "meal_type": "Lunch",
+    "recipe_title": "Amaretto Oriental Salmon",
+    "normalized_title": "amaretto oriental salmon",
+    "target_calories": 904
+  },
+  {
+    "date": "2026-08-02",
+    "time": "11:56",
+    "user_id": "user_001",
+    "meal_type": "Dinner",
+    "recipe_title": "15 Minute No Fry Chicken Enchiladas  Honest",
+    "normalized_title": "15 minute no fry chicken enchiladas  honest",
+    "target_calories": 791
+  },
+  {
+    "date": "2026-08-02",
+    "time": "11:56",
+    "user_id": "user_001",
+    "meal_type": "Breakfast",
+    "recipe_title": "Alaskan Smoked Salmon Sauce",
+    "normalized_title": "alaskan smoked salmon sauce",
+    "target_calories": 565
+  },
+  {
+    "date": "2026-08-02",
+    "time": "11:56",
+    "user_id": "user_001",
+    "meal_type": "Lunch",
+    "recipe_title": "Amaretto Oriental Salmon",
+    "normalized_title": "amaretto oriental salmon",
+    "target_calories": 904
+  },
+  {
+    "date": "2026-08-02",
+    "time": "11:56",
+    "user_id": "user_001",
+    "meal_type": "Dinner",
+    "recipe_title": "15 Minute No Fry Chicken Enchiladas  Honest",
+    "normalized_title": "15 minute no fry chicken enchiladas  honest",
+    "target_calories": 791
+  },
+  {
+    "date": "2026-08-02",
+    "time": "11:56",
+    "user_id": "user_001",
+    "meal_type": "Breakfast",
+    "recipe_title": "A Very Interesting Smoked Salmon Sandwich",
+    "normalized_title": "a very interesting smoked salmon sandwich",
+    "target_calories": 565
+  },
+  {
+    "date": "2026-08-02",
+    "time": "11:56",
+    "user_id": "user_001",
+    "meal_type": "Lunch",
+    "recipe_title": "24 Hour Green Vegetable Salad",
+    "normalized_title": "24 hour green vegetable salad",
+    "target_calories": 904
+  },
+  {
+    "date": "2026-08-02",
+    "time": "11:56",
+    "user_id": "user_001",
+    "meal_type": "Dinner",
+    "recipe_title": "A Bit Of Everything Chicken Salad",
+    "normalized_title": "a bit of everything chicken salad",
+    "target_calories": 791
   }
 ]

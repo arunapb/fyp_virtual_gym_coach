@@ -18,7 +18,10 @@
 -->
 <link rel="stylesheet" href="/static/style.css">
 <link rel="stylesheet" href="/static/nutrition.css">
+<link rel="stylesheet" href="/static/forms.css">
 <link rel="stylesheet" href="/static/meals.css">
+<!-- Render-blocking on purpose — see auth.js. Demo gate only. -->
+<script src="/static/auth.js"></script>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><text y='26' font-size='26'>%F0%9F%8D%BD</text></svg>">
 </head>
 <body>
@@ -41,6 +44,7 @@
       <span class="conn-dot" aria-hidden="true"></span>
       <span id="status-text">Checking&hellip;</span>
     </span>
+    <button id="sign-out" class="ghost-btn small" title="Sign out">Sign out</button>
   </div>
 </header>
 
@@ -319,6 +323,7 @@
   </div>
 </div>
 
+<script src="/static/profile-goal.js"></script>
 <script src="/static/meals.js"></script>
 </body>
 </html>

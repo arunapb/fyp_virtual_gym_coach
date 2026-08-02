@@ -1,0 +1,129 @@
+/* ==========================================================================
+   Shared form, modal, pace-picker and toast styles.
+
+   Extracted from meals.css when the login page grew a "Profile & goal" popup
+   that has to be the SAME popup as the meal-plan page's, not a lookalike.
+   The markup and the ids are identical on both pages (see
+   frontend/profile-goal.js, which drives either one), so the styling has to
+   live somewhere both can load.
+
+   The workout dashboard has almost no form controls, which is why these were
+   never in style.css and still aren't — style.css stays Module 2's sheet.
+   ========================================================================== */
+
+/* ── Form controls ───────────────────────────────────────────────────────── */
+.field { display: flex; flex-direction: column; gap: 0.3rem; margin-bottom: 0.85rem; }
+.field > span { font-size: 0.82rem; color: var(--text-secondary); }
+.field-row {
+  display: grid; gap: 0.85rem;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+}
+
+input[type="number"], input[type="text"], input[type="password"], select, textarea {
+  font: inherit; width: 100%;
+  padding: 0.5rem 0.65rem; border-radius: 9px;
+  background: var(--surface-2); color: var(--text-primary);
+  border: 1px solid var(--border-strong);
+  transition: border-color 0.12s;
+}
+input[type="number"]:focus, input[type="text"]:focus,
+input[type="password"]:focus, select:focus, textarea:focus {
+  outline: none; border-color: var(--accent);
+}
+textarea { resize: vertical; min-height: 72px; line-height: 1.5; }
+select { cursor: pointer; }
+/* The native menu is UA-drawn and inherits the page's light default without
+   this, which on a dark page renders black-on-black in Chromium. */
+select option { background: var(--surface-2); color: var(--text-primary); }
+
+.inline-field {
+  display: inline-flex; align-items: center; gap: 0.4rem;
+  font-size: 0.82rem; color: var(--text-muted); white-space: nowrap;
+}
+.inline-field select { width: auto; padding: 0.3rem 0.55rem; font-size: 0.82rem; }
+
+/* ── Modals ──────────────────────────────────────────────────────────────── */
+.modal-backdrop {
+  position: fixed; inset: 0; z-index: 200;
+  display: flex; align-items: center; justify-content: center; padding: 1.2rem;
+  background: color-mix(in srgb, var(--page) 82%, transparent);
+  backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+}
+.modal-card {
+  width: 100%; max-width: 500px; max-height: 88vh; overflow-y: auto;
+  background: var(--surface-1); border: 1px solid var(--border-strong);
+  border-radius: var(--radius-lg); padding: 1.3rem 1.4rem;
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.6);
+  animation: modal-rise 0.2s ease both;
+}
+.modal-card.wide { max-width: 620px; }
+@keyframes modal-rise {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.modal-head {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 0.8rem; margin-bottom: 0.5rem;
+}
+.modal-head h2 { margin: 0; }
+.close-btn { width: 32px; height: 32px; }
+.close-btn svg { width: 16px; height: 16px; fill: none; }
+.modal-actions {
+  display: flex; justify-content: flex-end; gap: 0.6rem; margin-top: 1.1rem;
+}
+.modal-actions .primary-btn { align-self: auto; }
+
+/* A modal with no way out — the onboarding popup after login, which has to be
+   filled in before the app is usable. It carries no close button and no
+   Cancel, and profile-goal.js suppresses Escape and backdrop clicks for it;
+   this is only here so the single remaining action can span the dialog. */
+.modal-backdrop.required .modal-actions { justify-content: stretch; }
+.modal-backdrop.required .modal-actions .primary-btn { flex: 1; text-align: center; }
+
+/* ── Goal & pace ─────────────────────────────────────────────────────────── */
+.goal-section {
+  border-top: 1px dashed var(--border); padding-top: 1rem; margin-top: 0.2rem;
+}
+.goal-section h3 { font-size: 0.95rem; margin-bottom: 0.5rem; }
+.goal-summary { font-size: 0.88rem; color: var(--text-secondary); margin-bottom: 0.7rem; }
+.goal-summary strong { color: var(--text-primary); }
+
+.pace-list { display: flex; flex-direction: column; gap: 0.45rem; margin-bottom: 0.6rem; }
+.pace-option {
+  display: flex; align-items: center; gap: 0.65rem; cursor: pointer;
+  padding: 0.6rem 0.75rem; border-radius: var(--radius);
+  background: var(--surface-2); border: 1px solid var(--border);
+  transition: border-color 0.12s, background 0.12s;
+}
+.pace-option:hover { border-color: var(--border-strong); }
+.pace-option.selected {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 12%, var(--surface-2));
+}
+.pace-option input { accent-color: var(--accent); width: 16px; height: 16px; flex: none; }
+.pace-label { display: block; font-weight: 600; font-size: 0.88rem; }
+.pace-meta { display: block; font-size: 0.76rem; color: var(--text-muted); margin-top: 0.1rem; }
+
+/* ── Toast ───────────────────────────────────────────────────────────────── */
+.toast {
+  position: fixed; left: 50%; bottom: 1.5rem; z-index: 300;
+  transform: translate(-50%, 12px);
+  max-width: min(90vw, 460px);
+  padding: 0.65rem 1.05rem; border-radius: 99px;
+  font-size: 0.85rem; text-align: center;
+  background: var(--surface-3); color: var(--text-primary);
+  border: 1px solid var(--border-strong);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.55);
+  opacity: 0; pointer-events: none;
+  transition: opacity 0.2s, transform 0.2s;
+}
+.toast.show { opacity: 1; transform: translate(-50%, 0); }
+.toast.bad {
+  border-color: color-mix(in srgb, var(--status-critical) 55%, transparent);
+  color: var(--status-critical);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .modal-card { animation: none; }
+  .toast { transition: opacity 0.2s; transform: translate(-50%, 0); }
+}
