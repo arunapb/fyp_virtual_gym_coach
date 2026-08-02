@@ -55,6 +55,7 @@ from src.signal_source import SIGNAL_NULL, SIGNAL_REST  # noqa: E402
 
 from backend import module1_worker  # noqa: E402
 from backend.live_session import MergedAnalysisSession  # noqa: E402
+from backend.module3.router import router as meals_router  # noqa: E402
 from backend.module4.router import router as nutrition_router  # noqa: E402
 
 BACKEND_FRONTEND_DIR = BACKEND_DIR / "frontend"
@@ -97,13 +98,23 @@ def create_app() -> FastAPI:
     def index():
         return FileResponse(os.path.join(BACKEND_FRONTEND_DIR, "index.html"))
 
-    # ── Module 3: nutrition analysis — its own page, not part of the ────────
-    # Module 1 + Module 2 workout pipeline. Shares only this server.
+    # ── Modules 3 and 4: their own pages, not part of the Module 1 + ────────
+    # Module 2 workout pipeline. They share this server and nothing else.
+    #
+    # Module 4 (nutrition analysis) is fully standalone. Module 3 (meal plan)
+    # has one link back to the workout side: every finished analysis appends
+    # its exercise to Module 3's log, which moves the 7-day average behind the
+    # calorie target shown here — see backend/module3/exercise_log.py.
     @app.get("/nutrition", response_class=HTMLResponse)
     def nutrition_page():
         return FileResponse(os.path.join(BACKEND_FRONTEND_DIR, "nutrition.html"))
 
+    @app.get("/meals", response_class=HTMLResponse)
+    def meals_page():
+        return FileResponse(os.path.join(BACKEND_FRONTEND_DIR, "meals.html"))
+
     app.include_router(nutrition_router)
+    app.include_router(meals_router)
 
     # ── Metadata ─────────────────────────────────────────────────────────────
     @app.get("/api/exercises")

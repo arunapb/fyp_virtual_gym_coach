@@ -28,6 +28,28 @@ matplotlib>=3.9
 sounddevice>=0.5
 soundfile>=0.12
 
+# --- Module 3 (meal recommendation & feedback) ------------------------------
+# Its services are imported from module3/ in place, not copied (see
+# backend/module3/__init__.py), so these are its runtime dependencies as
+# listed in module3/backend/requirements.txt, minus what is already above
+# (fastapi, uvicorn, pydantic, python-dotenv, torch, transformers, numpy,
+# pandas).
+#
+# The spaCy MODEL is a separate download and is NOT a pip requirement — the
+# feedback pipeline's causal parser needs it:
+#     python -m spacy download en_core_web_sm
+#
+# The BERT ABSA (nipun145/food_feedback) and BART zero-shot
+# (facebook/bart-large-mnli) weights pull from Hugging Face on the first
+# /api/meals/feedback call (~2 GB) and cache in ~/.cache/huggingface. The
+# FAISS index and recipe corpus are already vendored in module3/vector_store/.
+sentence-transformers>=3.0
+faiss-cpu>=1.8
+rank-bm25>=0.2
+spacy>=3.7
+vaderSentiment>=3.3
+qdrant-client>=1.9        # optional cloud vector search; falls back to FAISS
+
 # --- Module 4 (nutrition analysis) -----------------------------------------
 # Weights are NOT vendored: ~200 MB downloads from Hugging Face on the first
 # /api/nutrition/predict call and is then cached in ~/.cache/huggingface.
