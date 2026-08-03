@@ -20,7 +20,13 @@ Rules
 • Every other phase requires REP_PHASE_MIN_FRAMES frames of dwell time before
   the next transition can fire, preventing jitter-driven false transitions.
 • If the knee re-extends to KNEE_STANDING during DESCENDING without ever
-  reaching KNEE_BOTTOM, the rep is discarded (no count increment).
+  reaching KNEE_BOTTOM, the descent is judged a SHALLOW rep — counted, logged
+  with rep_quality red and shallow=1, and armed as a synthetic red depth zone
+  so the audio layer can cue it — provided it got at least as deep as
+  KNEE_SHALLOW_ATTEMPT and lasted SHALLOW_MIN_DESCENT_SEC.  Shorter or
+  shallower descents are still discarded as postural noise.
+• All smoothing windows and dwells are derived from the SOURCE frame rate
+  passed to __init__, not fixed frame counts (see config.py's TIMEBASE).
 • Frames where MediaPipe visibility scores for hips or knees fall below
   LANDMARK_MIN_VISIBILITY are skipped entirely — no state update occurs.
 • Per-rep statistics (min knee angle, worst zones, trunk deviation) are
@@ -35,16 +41,20 @@ from config import (
     KNEE_STANDING,
     KNEE_DESCENDING,
     KNEE_BOTTOM,
-    REP_VELOCITY_DEAD_ZONE,
-    REP_ANGLE_SMOOTH_N,
-    REP_VELOCITY_SMOOTH_N,
-    REP_PHASE_MIN_FRAMES,
-    BOTTOM_MIN_DWELL_FRAMES,
+    KNEE_SHALLOW_ATTEMPT,
+    SHALLOW_MIN_DESCENT_SEC,
+    SHALLOW_DEPTH_CUE_HOLD_SEC,
+    REP_VELOCITY_DEAD_ZONE_DEG_PER_SEC,
+    REP_ANGLE_SMOOTH_SEC,
+    REP_VELOCITY_SMOOTH_SEC,
+    REP_PHASE_MIN_SEC,
+    BOTTOM_MIN_DWELL_SEC,
     LANDMARK_MIN_VISIBILITY,
     DEBUG_REP_COUNTER,
+    FPS_REFERENCE, frames_at,
     IDX_HIP_L, IDX_HIP_R, IDX_KNEE_L, IDX_KNEE_R,
 )
-from src.zones import overall_zone
+from src.zones import overall_zone, classify_depth
 from src.pose_utils import landmarks_reliable
 
 
@@ -82,14 +92,30 @@ class RepCounter:
     rep_history      : list[dict] — stats for every completed rep (oldest first)
     """
 
-    def __init__(self):
+    def __init__(self, fps=FPS_REFERENCE):
+        # Every window and dwell below is derived from the SOURCE frame rate, so
+        # a 15 fps clip and a 30 fps clip smooth over the same real interval and
+        # reach the same phase at the same moment of the movement.  See the
+        # TIMEBASE section of config.py for what a fixed frame count did to the
+        # BOTTOM phase on 15 fps footage.
+        self.fps = fps if fps and fps > 0 else FPS_REFERENCE
+        self._dead_zone   = REP_VELOCITY_DEAD_ZONE_DEG_PER_SEC / self.fps
+        self._phase_min   = frames_at(REP_PHASE_MIN_SEC,          self.fps)
+        self._bottom_min  = frames_at(BOTTOM_MIN_DWELL_SEC,       self.fps)
+        self._shallow_min = frames_at(SHALLOW_MIN_DESCENT_SEC,    self.fps)
+        self._shallow_hold_frames = frames_at(SHALLOW_DEPTH_CUE_HOLD_SEC, self.fps)
+
         self.phase     = RepPhase.STANDING
         self.rep_count = 0
 
         # Smoothing buffers
-        self._angle_buf   = deque(maxlen=REP_ANGLE_SMOOTH_N)
-        self._vel_buf     = deque(maxlen=REP_VELOCITY_SMOOTH_N)
+        self._angle_buf   = deque(maxlen=frames_at(REP_ANGLE_SMOOTH_SEC, self.fps))
+        self._vel_buf     = deque(maxlen=frames_at(REP_VELOCITY_SMOOTH_SEC, self.fps))
         self._prev_smooth = None
+
+        # Frames remaining on the synthetic red depth zone armed by a shallow
+        # rep.  Ticked down by consume_shallow_cue(); see _state_descending.
+        self._shallow_cue_frames = 0
 
         # Frames elapsed since the most recent phase transition
         self._frames_in_phase = 0
@@ -98,6 +124,12 @@ class RepCounter:
         self._rep_start     = 0
         self._min_angle     = 180.0
         self._max_trunk_dev = 0.0
+        # Deepest hip depth in the current rep (LOWER is deeper), plus the
+        # calibrated standing baseline it is judged against.  inf so the first
+        # accumulated frame always wins; None baseline falls back to the
+        # absolute DEPTH_* thresholds inside classify_depth.
+        self._min_depth      = float("inf")
+        self._depth_baseline = None
         self._worst = {"valgus_l": "green", "valgus_r": "green",
                        "trunk":    "green", "depth":    "green"}
 
@@ -204,15 +236,31 @@ class RepCounter:
         # Require both: angle below trigger AND actively descending.
         # Velocity must be negative (angle decreasing) with magnitude > dead zone
         # to prevent standing-still jitter from starting a phantom rep.
-        if angle < KNEE_DESCENDING and vel < -REP_VELOCITY_DEAD_ZONE:
+        if angle < KNEE_DESCENDING and vel < -self._dead_zone:
             self._enter(RepPhase.DESCENDING, "below_descending_threshold_and_negative_velocity")
             self._rep_start = frame_id
             self._reset_stats()
 
     def _state_descending(self, angle, vel, frame_id):
-        # Aborted rep — rose back to standing without reaching valid depth
+        # Rose back to standing without reaching valid depth.
+        #
+        # This branch used to discard the descent outright — no count, no
+        # summary, no cue — which is what made a partial squat structurally
+        # invisible rather than merely ungraded.  A descent that got far enough
+        # to be a real attempt is now recorded as a SHALLOW rep instead, and
+        # arms the synthetic red depth zone that lets the audio layer say
+        # "go deeper".  Anything shorter or shallower than the guards is still
+        # discarded: that is postural noise, not a squat.
         if angle >= KNEE_STANDING:
-            self._enter(RepPhase.STANDING, "aborted_rep_rose_before_bottom")
+            genuine_attempt = (self._min_angle <= KNEE_SHALLOW_ATTEMPT
+                               and self._n_frames >= self._shallow_min)
+            if genuine_attempt:
+                self.rep_count += 1
+                self._finalise_rep(frame_id, shallow=True)
+                self._shallow_cue_frames = self._shallow_hold_frames
+                self._enter(RepPhase.STANDING, "shallow_rep_rose_before_bottom")
+            else:
+                self._enter(RepPhase.STANDING, "aborted_rep_rose_before_bottom")
             self._reset_stats()
             return
 
@@ -221,15 +269,15 @@ class RepCounter:
         # Transition when: valid depth was reached at any prior frame in this
         # descent AND motion has now slowed or reversed.
         if (self._min_angle < KNEE_BOTTOM
-                and vel >= -REP_VELOCITY_DEAD_ZONE
-                and self._frames_in_phase >= REP_PHASE_MIN_FRAMES):
+                and vel >= -self._dead_zone
+                and self._frames_in_phase >= self._phase_min):
             self._enter(RepPhase.BOTTOM, "reached_depth_and_velocity_slowed")
 
     def _state_bottom(self, vel):
-        # Wait for sustained upward velocity AND minimum dwell (~400 ms at 30 FPS)
+        # Wait for sustained upward velocity AND the minimum real-time dwell
         # before leaving BOTTOM, so momentary dips don't count as completed reps.
-        if (vel >= REP_VELOCITY_DEAD_ZONE
-                and self._frames_in_phase >= BOTTOM_MIN_DWELL_FRAMES):
+        if (vel >= self._dead_zone
+                and self._frames_in_phase >= self._bottom_min):
             self._enter(RepPhase.ASCENDING, "sustained_upward_velocity_after_dwell")
 
     def _state_ascending(self, angle, frame_id):
@@ -270,8 +318,29 @@ class RepCounter:
         self._min_angle     = min(self._min_angle, smooth)
         trunk_dev           = abs(feats.get("trunk_lean_dev_deg", 0.0))
         self._max_trunk_dev = max(self._max_trunk_dev, trunk_dev)
+
+        # Deepest point reached in this rep, kept as the raw measurement rather
+        # than as a latched zone.  DEPTH IS DELIBERATELY EXCLUDED from the
+        # per-frame _worst latch below and re-derived from this minimum in
+        # _finalise_rep: "did this rep get deep enough" is a question about the
+        # bottom of the movement, exactly like min_knee_angle, and latching the
+        # worst per-frame zone answers a different one.
+        #
+        # It answers it wrongly on a fast descent.  The depth zone divides the
+        # SMOOTHED hip depth by the baseline while its BOTTOM gate opens as soon
+        # as the smoothed knee angle passes 110 deg — and the knee bends faster
+        # than the hips drop, so for a frame or two the rep reads "knees deep,
+        # hips still high" and the zone flashes red.  Measured on job
+        # 75493c29e9d3 at frame 107: knee already 88.5 deg, zone red, and two
+        # frames later green at the genuine bottom.  Latching that transient
+        # marked both of that clip's full-depth squats as red-quality reps.
+        depth_now = feats.get("norm_hip_depth")
+        if depth_now is not None:
+            self._min_depth = min(self._min_depth, depth_now)
+            self._depth_baseline = feats.get("baseline_hip_depth")
+
         if zones:
-            for key in ("valgus_l", "valgus_r", "trunk", "depth"):
+            for key in ("valgus_l", "valgus_r", "trunk"):
                 self._worst[key] = _worse(self._worst[key], zones[key])
 
         # Running sums for per-rep means
@@ -286,8 +355,40 @@ class RepCounter:
         self._peak_valgus_r  = min(self._peak_valgus_r, vr)
         self._n_frames      += 1
 
-    def _finalise_rep(self, end_frame):
+    def consume_shallow_cue(self) -> bool:
+        """
+        True while the synthetic red depth zone armed by a shallow rep is still
+        held, ticking the hold down by one frame.
+
+        Exists because "you did not squat deep enough" is an EDGE-triggered
+        verdict — only knowable once the descent has ended — while the audio
+        controller is LEVEL-triggered, counting consecutive red frames.  Holding
+        the verdict for longer than CORRECTIVE_DWELL_SEC is what lets the two
+        meet.  Same mechanism as the curl's CURL_ROM_CUE_HOLD_FRAMES.
+        """
+        if self._shallow_cue_frames <= 0:
+            return False
+        self._shallow_cue_frames -= 1
+        return True
+
+    def _finalise_rep(self, end_frame, shallow=False):
+        # Depth verdict from the DEEPEST point of the rep — see _accumulate for
+        # why this is re-derived here instead of latched frame by frame.  A rep
+        # that accumulated no frame at all (every one gated out by the
+        # visibility check) leaves _min_depth at inf and is left green rather
+        # than condemned on missing data.
+        if self._min_depth < float("inf"):
+            self._worst["depth"] = classify_depth(self._min_depth,
+                                                  self._depth_baseline)
         quality = overall_zone(list(self._worst.values()))
+        if shallow:
+            # A rep that never reached depth is a failed rep whatever the other
+            # channels say: its worst_depth is set red rather than left at
+            # whatever the phase-gated depth zone happened to report, because
+            # that zone is only scored at BOTTOM and a shallow rep never gets
+            # there (see DEPTH_PHASE_BOTTOM_THRESHOLD's note on the circularity).
+            self._worst["depth"] = "red"
+            quality = "red"
         n       = max(self._n_frames, 1)
         summary = {
             "rep_num":          self.rep_count,
@@ -312,6 +413,7 @@ class RepCounter:
             "worst_valgus_r":   self._worst["valgus_r"],
             "worst_trunk":      self._worst["trunk"],
             "worst_depth":      self._worst["depth"],
+            "shallow":          int(shallow),
             "rep_quality":      quality,
         }
         self.rep_history.append(summary)
@@ -320,6 +422,7 @@ class RepCounter:
     def _reset_stats(self):
         self._min_angle     = 180.0
         self._max_trunk_dev = 0.0
+        self._min_depth     = float("inf")
         self._worst         = {k: "green" for k in self._worst}
         self._sum_knee      = 0.0
         self._sum_trunk_dev = 0.0

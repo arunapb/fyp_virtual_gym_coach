@@ -124,9 +124,13 @@ def analyse_stream_merged(video_path, pool, out_dir, *, stream_frames=False,
                                   (width, height))
     csv_log = CsvLogger(out_dir)
 
-    audio = (FeedbackController(player=CueRecorder())
+    # `fps` is the UPLOADED FILE's own rate, not a nominal 30: every dwell and
+    # smoothing window downstream is derived from it, so a 15 fps clip smooths
+    # over the same real interval a 30 fps one does and reaches BOTTOM at the
+    # same moment of the movement. See config.py's TIMEBASE.
+    audio = (FeedbackController(player=CueRecorder(), fps=fps)
              if AUDIO_FEEDBACK_ENABLED else NullAudioController())
-    sessionc = SessionController(audio)
+    sessionc = SessionController(audio, fps=fps)
     view_detector = ViewDetector()
 
     label_of = {cls: label for label, cls in EXERCISE_REGISTRY.items()}

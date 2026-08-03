@@ -13,9 +13,10 @@ mapping, CSV schema) is gathered here so the generic machinery stays agnostic.
 from collections import deque
 
 from config import (
-    BASELINE_FRAMES, SMOOTH_N, OVERALL_LABEL, PHASE_COLORS,
+    BASELINE_FRAMES, ZONE_SMOOTH_SEC, OVERALL_LABEL, PHASE_COLORS,
     SQUAT_CSV_HEADER, POSE_CONNECTIONS,
     SQUAT_CSV, REP_SUMMARY_CSV, REP_SUMMARY_HEADER,
+    FPS_REFERENCE, frames_at,
     IDX_SHOULDER_L, IDX_SHOULDER_R, IDX_HIP_L, IDX_HIP_R,
     IDX_KNEE_L, IDX_KNEE_R,
 )
@@ -42,13 +43,17 @@ class SquatExercise(Exercise):
     name = "Squat"
     calibration_pose_description = "Stand upright, feet shoulder-width apart"
 
-    def __init__(self):
+    def __init__(self, fps=FPS_REFERENCE):
         # Zone smoothing buffers — created once per activation (== once per
         # session), exactly as the pre-refactor main loop created `smoother`.
-        self._smoother = {k: deque(maxlen=SMOOTH_N) for k in (
+        # Sized from the SOURCE frame rate so the window covers the same real
+        # interval at 15 and 30 fps (see config.py's TIMEBASE).
+        self.fps = fps if fps and fps > 0 else FPS_REFERENCE
+        smooth_n = frames_at(ZONE_SMOOTH_SEC, self.fps)
+        self._smoother = {k: deque(maxlen=smooth_n) for k in (
             "valgus_l", "valgus_r", "trunk_dev", "depth",
             "valgus_3d_l", "valgus_3d_r", "knee_angle", "asymmetry")}
-        self._rep_counter = RepCounter()
+        self._rep_counter = RepCounter(fps=self.fps)
         self._prev_rep_count = 0
 
     # ── Calibration ──────────────────────────────────────────────────────────
@@ -59,7 +64,7 @@ class SquatExercise(Exercise):
         collected only while this exercise is active and the user stands still —
         identical sampling to the pre-refactor calibration block.
         """
-        trunk_samples, hip_y_samples = [], []
+        trunk_samples, hip_y_samples, depth_samples = [], [], []
         for lm, w, h in landmarks_buffer:
             sh_mid = midpoint(get_px(lm, IDX_SHOULDER_L, w, h),
                               get_px(lm, IDX_SHOULDER_R, w, h))
@@ -67,10 +72,18 @@ class SquatExercise(Exercise):
                               get_px(lm, IDX_HIP_R, w, h))
             trunk_samples.append(trunk_lean_angle(sh_mid, hi_mid))
             hip_y_samples.append(hi_mid[1])
+            # This user's own standing hip depth, the denominator that makes the
+            # depth zone independent of build and camera distance.  Derived from
+            # the same buffer and the same measurement code the per-frame path
+            # uses, so baseline and live value are directly comparable.
+            meas = compute_body_measurements(lm, w, h)
+            feats = compute_squat_features(lm, meas, {}, w, h)
+            depth_samples.append(feats["norm_hip_depth"])
         n = len(trunk_samples)
         return Calibration({
             "trunk_lean": sum(trunk_samples) / n,
             "hip_mid_y":  sum(hip_y_samples) / n,
+            "hip_depth":  sum(depth_samples) / n,
         })
 
     # ── Per-frame analysis (delegates to the unchanged squat modules) ─────────
@@ -81,11 +94,29 @@ class SquatExercise(Exercise):
         # was initialised to 0.0), so trunk_lean_dev == raw lean during the
         # calibration window.
         trunk_lean = calibration.values["trunk_lean"] if calibration else 0.0
-        feats = compute_squat_features(lm, meas, {"trunk_lean": trunk_lean}, w, h)
+        # hip_depth is absent from calibrations produced before it existed, and
+        # from the pre-calibration path; compute_squat_features falls back to the
+        # current frame in that case, which reads as a ratio of 1.0 (= standing).
+        hip_depth = calibration.values.get("hip_depth") if calibration else None
+        feats = compute_squat_features(
+            lm, meas, {"trunk_lean": trunk_lean, "hip_depth": hip_depth}, w, h)
         return {**meas, **feats}      # flat dict; meas/feats keys are disjoint
 
     def classify_zones(self, features: dict) -> dict:
-        return compute_zones(features, self._smoother)
+        zones = compute_zones(features, self._smoother)
+        # Synthetic red depth zone held for a few frames after a shallow rep.
+        #
+        # It has to be applied HERE rather than inside compute_zones because the
+        # verdict belongs to the rep counter, which SessionController runs AFTER
+        # classify_zones; the hold is armed on the frame the shallow rep ends and
+        # observed on the frames that follow.  Same ordering the bicep curl's ROM
+        # cue relies on.  `overall` is recomputed so the border, the aura and the
+        # audio all agree with the depth channel rather than contradicting it.
+        if self._rep_counter.consume_shallow_cue():
+            zones["depth"] = "red"
+            zones["overall"] = overall_zone([zones["valgus_l"], zones["valgus_r"],
+                                             zones["trunk"], zones["depth"]])
+        return zones
 
     def update_rep_counter(self, features, zones, frame_id, lm) -> RepState:
         self._rep_counter.update(features, zones, frame_id, landmarks=lm)
@@ -157,6 +188,8 @@ class SquatExercise(Exercise):
             round(f["norm_knee_offset_r"],       4),
             round(f["hip_height_px"],            2),
             round(f["norm_hip_depth"],           4),
+            round(f["baseline_hip_depth"],       4),
+            round(f["norm_depth_ratio"],         4),
             round(f["trunk_lean_deg"],           3),
             round(f["baseline_trunk_lean_deg"],  3),
             round(f["trunk_lean_dev_deg"],       3),
@@ -243,7 +276,11 @@ class SquatExercise(Exercise):
                      get_zone_color(zones["trunk"]) if zones else (255, 160, 40)),
             InfoCell(f"Valgus : L:{f['norm_knee_offset_l']:+.2f}  R:{f['norm_knee_offset_r']:+.2f}",
                      valgus_col),
-            InfoCell(f"Depth  : {f['norm_hip_depth']:.2f}x femur",
+            # The ratio is what the zone now acts on, so it leads; the raw
+            # femur-normalised value stays visible because every CSV and every
+            # earlier report is expressed in it.  ASCII only (Hershey fonts).
+            InfoCell(f"Depth  : {f['norm_depth_ratio']:.2f}x standing "
+                     f"({f['norm_hip_depth']:.2f}x femur)",
                      get_zone_color(zones["depth"]) if zones else (130, 255, 100)),
             self._calib_cell(n, total, done, zones, restarts),
         ]

@@ -135,6 +135,14 @@ def compute_squat_features(lm, meas, calib, w, h):
     hip_height     = an_mid[1] - hip_mid[1]
     norm_hip_depth = safe_div(hip_height, avg_femur)
 
+    # Depth as a fraction of THIS user's own standing depth: 1.0 while standing,
+    # lower as they descend.  The absolute scale above varies with build and
+    # camera distance far more than the depth thresholds allow for — see the
+    # DEPTH_RATIO_* note in config.py.  Falls back to the current frame before
+    # calibration completes, so the ratio reads 1.0 rather than dividing by None.
+    base_hip_depth  = calib.get("hip_depth") or norm_hip_depth
+    norm_depth_ratio = safe_div(norm_hip_depth, base_hip_depth)
+
     # ── Trunk lean ────────────────────────────────────────────────────────────
     shoulder_mid   = midpoint(sh_l, sh_r)
     lean           = trunk_lean_angle(shoulder_mid, hip_mid)
@@ -198,6 +206,8 @@ def compute_squat_features(lm, meas, calib, w, h):
         "norm_knee_offset_r":      norm_knee_off_r,
         "hip_height_px":           hip_height,
         "norm_hip_depth":          norm_hip_depth,
+        "baseline_hip_depth":      base_hip_depth,
+        "norm_depth_ratio":        norm_depth_ratio,
         "trunk_lean_deg":          lean,
         "baseline_trunk_lean_deg": base_lean,
         "trunk_lean_dev_deg":      lean_deviation,

@@ -41,7 +41,8 @@ import time
 
 from config import (
     AUDIO_CLIPS_DIR, EXPECTED_AUDIO_CLIPS, AUDIO_MIN_CUE_GAP_SEC,
-    CORRECTIVE_DWELL_FRAMES, CORRECTIVE_COOLDOWN_SEC, AUDIO_CORRECTIVE_PRIORITY,
+    CORRECTIVE_DWELL_SEC, CORRECTIVE_COOLDOWN_SEC, AUDIO_CORRECTIVE_PRIORITY,
+    FPS_REFERENCE, frames_at,
     SYSTEM_STATUS_BAD_DWELL_SEC, SYSTEM_STATUS_GOOD_DWELL_SEC,
     SYSTEM_STATUS_COOLDOWN_SEC,
     ENCOURAGE_MILESTONE_INTERVAL, ENCOURAGE_STREAK_LENGTH, ENCOURAGE_COOLDOWN_SEC,
@@ -111,7 +112,15 @@ def default_corrective_channels():
     spec = {
         "valgus": (["valgus_l", "valgus_r"], {"DESCENDING", "BOTTOM"},
                    [AUDIO_CORRECT_KNEES_OUT]),
-        "depth":  (["depth"], {"BOTTOM"},
+        # STANDING is in the depth channel's phase set for the SHALLOW-REP cue.
+        # A squat that stops short never enters BOTTOM — that is precisely the
+        # fault — so gating "go deeper" on BOTTOM alone made it unreachable for
+        # the one case it exists to serve.  RepCounter arms a synthetic red depth
+        # zone as the shallow rep ends, by which point the phase has returned to
+        # STANDING, which is also the natural moment to tell someone to go deeper
+        # next time.  A genuinely deep-but-still-shallow rep is still caught at
+        # BOTTOM by the ratio thresholds.
+        "depth":  (["depth"], {"BOTTOM", "STANDING"},
                    [AUDIO_CORRECT_GO_DEEPER]),
         "trunk":  (["trunk"], {"DESCENDING", "BOTTOM", "ASCENDING"},
                    list(AUDIO_CORRECT_TRUNK_CLIPS)),
@@ -270,10 +279,14 @@ class FeedbackController:
     reproduce the pre-refactor squat behaviour.
     """
 
-    def __init__(self, player=None):
+    def __init__(self, player=None, fps=FPS_REFERENCE):
         self.player = player if player is not None else AudioPlayer()
         self._channels = default_corrective_channels()
         self._signal_state = GATE_EXERCISE
+        # Red-frame dwell derived from the SOURCE frame rate, so a fault has to
+        # persist for the same REAL time before it is cued regardless of how the
+        # clip was recorded (see config.py's TIMEBASE).
+        self._dwell_frames = frames_at(CORRECTIVE_DWELL_SEC, fps)
         self.reset()
 
     # -------------------------------------------------------------------------
@@ -449,13 +462,13 @@ class FeedbackController:
         """
         Return the single corrective channel allowed to fire this frame, or None.
 
-        A channel qualifies when its red streak has met CORRECTIVE_DWELL_FRAMES,
-        the current rep phase permits it, and its per-cue cooldown has elapsed.
-        Channels are evaluated in configured priority order.
+        A channel qualifies when its red streak has met CORRECTIVE_DWELL_SEC
+        worth of frames, the current rep phase permits it, and its per-cue
+        cooldown has elapsed.  Channels are evaluated in configured priority order.
         """
         for ch in self._channels:
             name = ch["name"]
-            if self._red_frames[name] < CORRECTIVE_DWELL_FRAMES:
+            if self._red_frames[name] < self._dwell_frames:
                 continue
             if rep_phase not in ch["phases"]:
                 continue

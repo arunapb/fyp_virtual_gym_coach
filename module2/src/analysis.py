@@ -136,9 +136,11 @@ def analyse_stream(video_path, signal_source, out_dir, *, stream_frames=False,
     csv_log = CsvLogger(out_dir)
 
     # The real controller with its speaker replaced — see src/audio_bridge.py.
-    audio = (FeedbackController(player=CueRecorder())
+    # Both are given the SOURCE's frame rate so their dwells and smoothing
+    # windows mean the same real interval on any clip (config.py's TIMEBASE).
+    audio = (FeedbackController(player=CueRecorder(), fps=fps)
              if AUDIO_FEEDBACK_ENABLED else NullAudioController())
-    sessionc = SessionController(audio)
+    sessionc = SessionController(audio, fps=fps)
     # Pure observer, exactly as view_detection.py's Stage-1 contract requires:
     # its verdict is REPORTED to the user and consumed by nothing — no zone,
     # threshold, visibility gate or cue reads it.

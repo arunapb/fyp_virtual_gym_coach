@@ -54,8 +54,17 @@ def _render(frame, ex, fs, lm, pose_detected, source_label, frame_id, w, h):
 
 
 def run_live(cap, source, source_label, wait_ms):
-    audio = FeedbackController() if AUDIO_FEEDBACK_ENABLED else NullAudioController()
-    session = SessionController(audio)
+    # A FILE reports its true rate, so dwells and smoothing windows can be
+    # derived from it (config.py's TIMEBASE).  A WEBCAM's CAP_PROP_FPS is the
+    # sensor's nominal rate, not the rate this loop actually achieves — pose
+    # inference sets that, and it varies with the machine — so the reported
+    # value would be wrong in a way that is worse than the FPS_REFERENCE
+    # default.  Live capture therefore keeps the historical behaviour until
+    # there is a measured throughput to use instead.
+    fps = cap.get(cv2.CAP_PROP_FPS) if source == "video" else None
+    audio = (FeedbackController(fps=fps) if AUDIO_FEEDBACK_ENABLED
+             else NullAudioController())
+    session = SessionController(audio, fps=fps)
     signal_source = KeyboardSignalSource(default="Rest")
     csv_log = CsvLogger(OUTPUTS_DIR)
 

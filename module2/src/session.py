@@ -16,11 +16,12 @@ Responsibilities
 Adding a new exercise = add a class + one EXERCISE_REGISTRY entry.
 """
 
+import inspect
 import re
 from dataclasses import dataclass
 from enum import Enum
 
-from config import BASELINE_FRAMES, CALIB_MAX_FRAMES
+from config import BASELINE_FRAMES, CALIB_MAX_FRAMES, FPS_REFERENCE
 from src.signal_source import SIGNAL_NULL, SIGNAL_REST, KeyboardSignalSource
 from src.exercises.squat import SquatExercise
 from src.exercises.bicep_curl import BicepCurlExercise
@@ -38,6 +39,23 @@ EXERCISE_REGISTRY = {
 def _pretty_label(label: str) -> str:
     """'BicepCurl' -> 'Bicep Curl'.  Registry keys are CamelCase; prompts are not."""
     return re.sub(r"(?<!^)(?=[A-Z])", " ", label)
+
+
+def _instantiate(cls, fps):
+    """
+    Build an exercise, handing it the source frame rate if it accepts one.
+
+    Only the squat has been converted to frame-rate-derived windows so far; the
+    curl and press still take no constructor arguments and still carry the
+    FRAME-RATE WARNING config.py documents against their own *_FRAMES dwells.
+    Inspecting the signature keeps that conversion a one-exercise change rather
+    than a breaking signature edit across every implementation — and reads the
+    parameter list rather than catching TypeError, which would also swallow a
+    genuine TypeError raised inside __init__ and silently retry.
+    """
+    if "fps" in inspect.signature(cls.__init__).parameters:
+        return cls(fps=fps)
+    return cls()
 
 
 def rest_banner_text() -> str:
@@ -81,8 +99,13 @@ class FrameState:
 
 
 class SessionController:
-    def __init__(self, audio_controller):
+    def __init__(self, audio_controller, fps=FPS_REFERENCE):
         self.audio = audio_controller
+        # Handed to every exercise instantiated below, which passes it on to its
+        # rep counter and zone smoothers.  A source's frame rate is a property of
+        # the whole session, so it is owned here rather than re-derived by each
+        # exercise (see config.py's TIMEBASE for why it must be known at all).
+        self.fps = fps if fps and fps > 0 else FPS_REFERENCE
         self.active_exercise = None
         self.signal_state = SignalState.REST
         self._current_label = SIGNAL_REST
@@ -131,7 +154,7 @@ class SessionController:
 
     def _enter_exercise(self, label: str) -> None:
         self._teardown()
-        self.active_exercise = EXERCISE_REGISTRY[label]()
+        self.active_exercise = _instantiate(EXERCISE_REGISTRY[label], self.fps)
         self.signal_state = SignalState.EXERCISE
         self._current_label = label
         # Fresh calibration.

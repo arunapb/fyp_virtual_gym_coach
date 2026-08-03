@@ -16,6 +16,7 @@ from config import (
     VALGUS_R_YELLOW, VALGUS_R_RED,
     TRUNK_DEV_YELLOW, TRUNK_DEV_RED,
     DEPTH_YELLOW, DEPTH_RED,
+    DEPTH_RATIO_YELLOW, DEPTH_RATIO_RED,
     DEPTH_PHASE_BOTTOM_THRESHOLD,
     VALGUS_3D_YELLOW, VALGUS_3D_RED,
     ASYMMETRY_YELLOW, ASYMMETRY_RED,
@@ -64,13 +65,29 @@ def classify_trunk_deviation(value):
     return "green"
 
 
-def classify_depth(value):
+def classify_depth(value, baseline=None):
     """
-    Classify squat depth from normalised hip depth (hip_height / avg_femur).
-    Higher value = hips still elevated = shallower squat.
+    Classify squat depth.  Higher value = hips still elevated = shallower squat.
     This is a target-depth heuristic, NOT an injury threshold.
     Only meaningful at BOTTOM phase — call classify_depth_phase_aware instead.
+
+    With a `baseline` (the user's own calibrated standing norm_hip_depth) the
+    metric is the RATIO to that baseline — 1.0 standing, lower is deeper — and
+    the DEPTH_RATIO_* thresholds apply.  Without one it falls back to the
+    absolute DEPTH_* thresholds, which is what every caller predating the
+    baseline did.
+
+    The absolute path is retained for compatibility, not because it works: its
+    thresholds come from a dataset whose subjects stand at ~1.92, and a subject
+    standing at 1.70 cannot reach them at any depth.  See config.py.
     """
+    if baseline:
+        ratio = value / baseline
+        if ratio > DEPTH_RATIO_RED:
+            return "red"
+        if ratio > DEPTH_RATIO_YELLOW:
+            return "yellow"
+        return "green"
     if value > DEPTH_RED:
         return "red"
     if value > DEPTH_YELLOW:
@@ -78,14 +95,19 @@ def classify_depth(value):
     return "green"
 
 
-def classify_depth_phase_aware(value, phase_label):
+def classify_depth_phase_aware(value, phase_label, baseline=None):
     """
     Phase-aware wrapper around classify_depth.
     Returns "green" for all phases except BOTTOM so that depth warnings don't
     fire while the subject is standing, descending, or ascending.
+
+    NOTE this gate cannot catch a squat that stops well short of BOTTOM — the
+    fault is what keeps it out of the phase that would grade it.  That case is
+    handled by RepCounter's shallow-rep detection, which arms a synthetic red
+    depth zone instead of relying on this classifier.
     """
     if phase_label == "BOTTOM":
-        return classify_depth(value)
+        return classify_depth(value, baseline)
     return "green"
 
 
@@ -238,9 +260,13 @@ def compute_zones(feats, smoother):
     z3dl = classify_valgus_3d(mean(smoother["valgus_3d_l"]))
     z3dr = classify_valgus_3d(mean(smoother["valgus_3d_r"]))
 
-    # Phase-aware depth — only fires at BOTTOM
+    # Phase-aware depth — only fires at BOTTOM.  The baseline rides in the
+    # features dict (put there by the exercise from its Calibration) rather than
+    # being passed separately, because classify_zones() has no calibration
+    # argument and the squat already carries baseline_trunk_lean_deg the same way.
     phase_label = _get_phase_label(smoother["knee_angle"])
-    zd          = classify_depth_phase_aware(mean(smoother["depth"]), phase_label)
+    zd          = classify_depth_phase_aware(mean(smoother["depth"]), phase_label,
+                                             feats.get("baseline_hip_depth"))
 
     # Asymmetry zone
     smooth_asym = mean(smoother["asymmetry"])

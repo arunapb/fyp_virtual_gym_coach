@@ -14,6 +14,40 @@ import os
 from collections import deque
 
 # =============================================================================
+# TIMEBASE  (frame counts vs. wall-clock durations)
+# =============================================================================
+# Every dwell and smoothing window in this file is authored as a DURATION and
+# converted to a frame count against the SOURCE's own frame rate by frames_at().
+# They used to be written directly as frame counts tuned on 30 fps footage,
+# which silently changed meaning on any other rate — and this project's own
+# squat clips are 15 fps.
+#
+# Measured consequence on a 15 fps clip (job 75493c29e9d3, 2026-08-03):
+# REP_ANGLE_SMOOTH_N of 7 spans 0.47 s there, longer than the 0.33 s descent it
+# is meant to smooth.  The smoothed knee angle bottomed out at 103.4 deg where
+# the raw signal reached 84.4 deg, and the BOTTOM phase label — which gates both
+# the depth zone and the valgus cue — landed entirely on the ASCENT, on frames
+# where the knee had already re-extended to 151-179 deg.  Both fault channels
+# were therefore evaluated while the subject was standing back up.
+#
+# This file already carried that warning against the curl and press dwells; it
+# had never been applied to the squat's own constants.
+
+FPS_REFERENCE = 30.0    # rate every legacy frame-count constant was tuned at
+
+
+def frames_at(seconds: float, fps: float | None, minimum: int = 1) -> int:
+    """
+    A duration in seconds as a frame count at `fps`, never below `minimum`.
+
+    An fps of None or 0 (an unreadable source) falls back to FPS_REFERENCE
+    rather than dividing by zero, which makes the constant exactly its
+    historical value instead of raising in the middle of a run.
+    """
+    rate = fps if fps and fps > 0 else FPS_REFERENCE
+    return max(minimum, int(round(seconds * rate)))
+
+# =============================================================================
 # DIRECTORIES
 # =============================================================================
 # Every path below is ABSOLUTE, derived from this file's own location.  Paths
@@ -134,7 +168,32 @@ DEPTH_RED    = 2.4373   # > this → red (barely squatting at BOTTOM phase)
 
 # Avg knee angle (deg) below which the subject is considered at the BOTTOM of a squat.
 # Used for phase-aware depth evaluation — depth is only classified in this phase.
+#
+# NOTE the circularity this creates, which is why the shallow-rep detector below
+# does NOT rely on it: a rep can only be judged "too shallow" once it is already
+# deep enough to be labelled BOTTOM.  A squat that stops at 140 deg — precisely
+# the fault the depth channel exists to catch — never reaches this gate, so the
+# depth zone stays green for it no matter how the thresholds are set.
 DEPTH_PHASE_BOTTOM_THRESHOLD = 110.0
+
+# ── Hip depth relative to the user's OWN standing baseline ───────────────────
+# DEPTH_YELLOW / DEPTH_RED above are ABSOLUTE norm_hip_depth values derived from
+# REHAB24-6, whose subjects stand at ~1.92.  That scale does not transfer
+# between subjects or camera distances: on job 75493c29e9d3 the subject stands
+# at 1.696 and never exceeded 1.879 at any point in the clip, so the absolute
+# channel could not have fired at ANY squat depth — it was a dead channel, not a
+# lenient one.
+#
+# Dividing by that user's own calibrated standing depth removes both
+# dependencies: 1.0 is standing, lower is deeper.  When a calibration carries no
+# "hip_depth" baseline the classifier falls back to the absolute thresholds, so
+# nothing that predates this change breaks.
+#
+# FEEL-TUNED ON A SINGLE CLIP, NOT DATASET-DERIVED — must be re-derived before
+# any reported result rests on it.  On that clip the two full squats reached
+# 0.775 and 0.759, and the two genuine partial reps 0.892 and 0.930.
+DEPTH_RATIO_YELLOW = 0.86   # ratio > this at BOTTOM → yellow (too shallow)
+DEPTH_RATIO_RED    = 0.91   # ratio > this at BOTTOM → red
 
 # ── Left-right asymmetry (max of knee and hip symmetry differences) ──────────
 # asymmetry_score = max(|knee_sym_diff_deg|, |hip_sym_diff_deg|)
@@ -159,9 +218,16 @@ VALGUS_3D_RED    = 1.4396   # |dev| > this → red
 # SMOOTHING
 # =============================================================================
 
-# Number of frames over which noisy metrics are averaged before classification.
-# Prevents single-frame pose jitter from flipping zone colours.
-SMOOTH_N = 5
+# Time over which noisy metrics are averaged before zone classification.
+# Prevents single-frame pose jitter from flipping zone colours.  Authored as a
+# duration for the reason given under TIMEBASE: at 15 fps the historical 5-frame
+# window spans 0.33 s, and on job 75493c29e9d3 that was enough to average the
+# trunk-deviation peak of 5.99 deg back under TRUNK_DEV_YELLOW (5.448), leaving
+# the channel green on a frame that had genuinely crossed the threshold.
+ZONE_SMOOTH_SEC = 0.167
+
+# Historical 30-fps frame count (see the note on REP_ANGLE_SMOOTH_N).
+SMOOTH_N = frames_at(ZONE_SMOOTH_SEC, FPS_REFERENCE)
 
 # Human-readable label for each overall zone shown in the info bar
 OVERALL_LABEL = {"green": "GOOD", "yellow": "WARNING", "red": "HIGH RISK"}
@@ -193,24 +259,66 @@ KNEE_DESCENDING = 150.0
 # after this change to see the updated Hip Depth evaluation numbers.
 KNEE_BOTTOM = 130.0
 
-# Velocity (degrees/frame, signed) below which motion is considered "stopped".
-# Used to detect the inflection point between descent and ascent.
-REP_VELOCITY_DEAD_ZONE = 0.5
+# Angular speed (degrees per SECOND, signed) below which motion counts as
+# "stopped".  Used to detect the inflection point between descent and ascent.
+#
+# Was 0.5 degrees per FRAME — which is 15 deg/s at 30 fps but only 7.5 deg/s at
+# 15 fps, making the turnaround detector twice as twitchy on this project's own
+# clips.  Per second it means the same thing at every rate.
+REP_VELOCITY_DEAD_ZONE_DEG_PER_SEC = 15.0
 
-# Smoothing window for the knee-angle signal (frames)
-REP_ANGLE_SMOOTH_N = 7
+# Smoothing window for the knee-angle signal.  0.233 s is the historical 7
+# frames at 30 fps, unchanged for 30 fps sources.
+REP_ANGLE_SMOOTH_SEC = 0.233
 
-# Smoothing window for the velocity signal (frames)
-REP_VELOCITY_SMOOTH_N = 5
+# Smoothing window for the velocity signal (historical 5 frames at 30 fps).
+REP_VELOCITY_SMOOTH_SEC = 0.167
 
-# Minimum frames a phase must be held before a transition can fire.
-# Guards against jitter-driven rapid phase flipping.
-REP_PHASE_MIN_FRAMES = 3
+# Minimum time a phase must be held before a transition can fire.
+# Guards against jitter-driven rapid phase flipping.  (3 frames at 30 fps.)
+REP_PHASE_MIN_SEC = 0.10
 
-# Minimum frames the BOTTOM phase must be held before transitioning to
-# ASCENDING.  At 30 FPS, 12 frames ≈ 400 ms — the minimum realistic dwell
-# at the bottom of a real squat.  Prevents momentary dips counting as reps.
-BOTTOM_MIN_DWELL_FRAMES = 12
+# Minimum time the BOTTOM phase must be held before transitioning to ASCENDING —
+# the minimum realistic dwell at the bottom of a real squat.  Prevents momentary
+# dips counting as reps.  (12 frames at 30 fps.)
+BOTTOM_MIN_DWELL_SEC = 0.40
+
+# Historical 30-fps frame counts, retained because they are the documented
+# reference values and are imported by scripts outside src/.  The live pipeline
+# derives its own counts from the SOURCE fps via frames_at(); these are what
+# that derivation returns for a 30 fps source.
+REP_VELOCITY_DEAD_ZONE  = REP_VELOCITY_DEAD_ZONE_DEG_PER_SEC / FPS_REFERENCE
+REP_ANGLE_SMOOTH_N      = frames_at(REP_ANGLE_SMOOTH_SEC,    FPS_REFERENCE)
+REP_VELOCITY_SMOOTH_N   = frames_at(REP_VELOCITY_SMOOTH_SEC, FPS_REFERENCE)
+REP_PHASE_MIN_FRAMES    = frames_at(REP_PHASE_MIN_SEC,       FPS_REFERENCE)
+BOTTOM_MIN_DWELL_FRAMES = frames_at(BOTTOM_MIN_DWELL_SEC,    FPS_REFERENCE)
+
+# ── Shallow ("partial") reps ─────────────────────────────────────────────────
+# A descent that never reached KNEE_BOTTOM used to be DISCARDED outright by
+# _state_descending's abort branch: no count, no summary, no cue, no trace in
+# any artefact.  That made the most common squat fault structurally invisible —
+# a partial rep was not a bad rep, it ceased to exist — and because the depth
+# zone is only scored during BOTTOM phase, which a discarded descent never
+# enters, nothing downstream could catch it either.
+#
+# Measured on job 75493c29e9d3: four of six squat attempts were discarded this
+# way (min knee 138-147 deg, hips only 6-11% below standing) and the session
+# reported "2 reps, both green".
+#
+# A descent now counts as a SHALLOW REP — logged, quality red, and cued — when
+# it reaches at least KNEE_SHALLOW_ATTEMPT and is held for
+# SHALLOW_MIN_DESCENT_SEC.  Both guards exist to separate a genuine partial
+# squat from postural noise: on that same clip two further dips (147.1 and
+# 147.3 deg, lasting 3 and 2 frames) are the subject shifting weight.
+KNEE_SHALLOW_ATTEMPT    = 145.0
+SHALLOW_MIN_DESCENT_SEC = 0.25
+
+# How long the shallow verdict is held as a synthetic red depth zone so the
+# dwell-based audio controller can observe it.  MUST exceed CORRECTIVE_DWELL_SEC
+# or the "go deeper" cue can never fire — the same edge-triggered-verdict versus
+# level-triggered-controller problem CURL_ROM_CUE_HOLD_FRAMES solves for the
+# curl, applied to the squat for the first time here.
+SHALLOW_DEPTH_CUE_HOLD_SEC = 0.60
 
 # Minimum MediaPipe visibility score (0–1) for a landmark to be considered
 # reliable.  Frames where any of the four key rep-counter landmarks (both hips
@@ -236,6 +344,9 @@ REP_SUMMARY_HEADER = [
     "mean_depth",
     # Worst zone reached for each metric during the rep
     "worst_valgus_l", "worst_valgus_r", "worst_trunk", "worst_depth",
+    # 1 when the descent never reached KNEE_BOTTOM — a partial rep, which is
+    # logged rather than discarded (see KNEE_SHALLOW_ATTEMPT).
+    "shallow",
     "rep_quality",
 ]
 
@@ -304,7 +415,10 @@ SQUAT_CSV_HEADER = [
     "knee_offset_l_px", "knee_offset_r_px",
     "norm_knee_offset_l", "norm_knee_offset_r",
     # ── Hip height & depth ───────────────────────────────────────────────────
-    "hip_height_px", "norm_hip_depth",
+    # norm_depth_ratio is norm_hip_depth over the user's own calibrated standing
+    # depth (1.0 = standing, lower = deeper); the baseline is logged alongside
+    # it so the division is auditable the way baseline_trunk_lean_deg is.
+    "hip_height_px", "norm_hip_depth", "baseline_hip_depth", "norm_depth_ratio",
     # ── Trunk lean ───────────────────────────────────────────────────────────
     "trunk_lean_deg", "baseline_trunk_lean_deg", "trunk_lean_dev_deg",
     # ── Knee angles ──────────────────────────────────────────────────────────
@@ -363,9 +477,17 @@ AUDIO_CLIPS_DIR = os.path.join(ASSETS_DIR, "audio")
 AUDIO_MIN_CUE_GAP_SEC = 2.0
 
 # ── Corrective cues ──────────────────────────────────────────────────────────
-# A zone must read RED for this many CONSECUTIVE FRAMES before its cue fires.
+# A zone must read RED CONTINUOUSLY for this long before its cue fires.
 # Sustained-trigger: a single red frame (pose jitter) is ignored.
-CORRECTIVE_DWELL_FRAMES = 12
+#
+# Authored as a duration for the reason given under TIMEBASE.  As a flat 12
+# frames it demanded 0.4 s of unbroken red at 30 fps but 0.8 s at 15 fps — and
+# on a 15 fps clip a single rep's DESCENDING+BOTTOM window is only ~30 frames,
+# so the cue needed the fault to persist across most of the rep to be heard.
+CORRECTIVE_DWELL_SEC = 0.40
+
+# Historical 30-fps frame count (see the note on REP_ANGLE_SMOOTH_N).
+CORRECTIVE_DWELL_FRAMES = frames_at(CORRECTIVE_DWELL_SEC, FPS_REFERENCE)
 # The SAME corrective cue cannot repeat more often than this many SECONDS.
 CORRECTIVE_COOLDOWN_SEC = 4.0
 # Order used when several zones are red on the same frame — only the single
