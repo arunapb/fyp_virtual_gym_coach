@@ -189,11 +189,56 @@ DEPTH_PHASE_BOTTOM_THRESHOLD = 110.0
 # "hip_depth" baseline the classifier falls back to the absolute thresholds, so
 # nothing that predates this change breaks.
 #
-# FEEL-TUNED ON A SINGLE CLIP, NOT DATASET-DERIVED — must be re-derived before
-# any reported result rests on it.  On that clip the two full squats reached
-# 0.775 and 0.759, and the two genuine partial reps 0.892 and 0.930.
-DEPTH_RATIO_YELLOW = 0.86   # ratio > this at BOTTOM → yellow (too shallow)
-DEPTH_RATIO_RED    = 0.91   # ratio > this at BOTTOM → red
+# SUPERSEDED on 2026-08-03, retained for reference and still honoured by
+# classify_depth() so nothing that calls it with a baseline breaks.  The DEPTH
+# ZONE and the per-rep depth verdict no longer read either of these.
+#
+# Why: norm_hip_depth divides by avg_femur measured in IMAGE PIXELS, and a femur
+# foreshortens as the thigh angles toward the camera — so the denominator moves
+# with the very pose the numerator is measuring.  The result is not monotonic in
+# squat depth.  Measured on job 75493c29e9d3, mean ratio by knee angle:
+#
+#     knee 120 deg -> 0.997     knee 140 deg -> 0.954     knee 160 deg -> 0.998
+#     knee  90 deg -> 0.879     knee  80 deg -> 0.793     knee  70 deg -> 0.793
+#
+# A metric that reads the same at 120 and 160 degrees cannot grade depth at all,
+# in either direction, at any threshold.  norm_depth_ratio is still computed and
+# logged to CSV as a diagnostic; it just no longer drives a decision.
+DEPTH_RATIO_YELLOW = 0.86   # SUPERSEDED - no longer read by the depth zone
+DEPTH_RATIO_RED    = 0.91   # SUPERSEDED - no longer read by the depth zone
+
+# ── Squat depth band, on KNEE ANGLE at the deepest point of the rep ──────────
+# Knee angle is a pure three-point angle: scale-free, unaffected by camera
+# distance, and monotonic through the descent where the hip-depth ratio above is
+# not (179 deg standing -> 84 deg at the bottom on the clip cited above).  It is
+# also the measure the coaching convention is stated in — ~90 deg is thighs
+# parallel to the floor.
+#
+# The band is TWO-SIDED.  Depth used to be graded only from above ("too
+# shallow"), which left going too deep — where the lumbar spine starts to flex
+# under load — silently green no matter how far past parallel the lifter went.
+#
+# FEEL-TUNED against the coaching convention (90 deg = parallel), NOT derived
+# from REHAB24-6 or any other annotated set.  They are defensible starting
+# points, not measured ones, and must be re-derived before any reported result
+# rests on them.
+# TIERS ARE NOT COSMETIC — only RED is spoken.  The audio controller counts
+# consecutive RED frames (see FeedbackController._update_corrective_dwell), so a
+# yellow band shows on the overlay, the zone strip and the rep's quality but
+# stays silent, which is what keeps the coaching sparse rather than chatty.
+# Setting the RED edge is therefore setting "how bad before it says something".
+DEPTH_KNEE_SHALLOW_YELLOW = 100.0   # min knee angle above this → short of depth
+DEPTH_KNEE_SHALLOW_RED    = 115.0   # a half squat — spoken as "go deeper"
+DEPTH_KNEE_DEEP_YELLOW    =  70.0   # below this → well past parallel
+DEPTH_KNEE_DEEP_RED       =  55.0   # deep enough that lumbar flexion is likely
+
+# COVERAGE GAP, stated so it is not mistaken for a bug: a descent that stops
+# between KNEE_SHALLOW_ATTEMPT (145) and KNEE_DESCENDING (150) is neither a
+# counted rep nor a shallow rep, and passes in silence.  That window is the
+# price of rejecting postural noise — on job 75493c29e9d3 two dips at 147.1 and
+# 147.3 deg, lasting 3 and 2 frames, are the subject shifting weight, not
+# squatting.  Lower KNEE_SHALLOW_ATTEMPT to close the gap and those start being
+# reported as failed reps.
 
 # ── Left-right asymmetry (max of knee and hip symmetry differences) ──────────
 # asymmetry_score = max(|knee_sym_diff_deg|, |hip_sym_diff_deg|)
@@ -426,7 +471,10 @@ SQUAT_CSV_HEADER = [
     # ── Hip angles ───────────────────────────────────────────────────────────
     "hip_angle_l_deg", "hip_angle_r_deg", "hip_sym_diff_deg",
     # ── Form-risk warning zones (project heuristics, not medical thresholds) ─
-    "valgus_zone_l", "valgus_zone_r", "trunk_zone", "depth_zone", "overall_zone",
+    # depth_zone is the TOO-SHALLOW side of the depth band; depth_excess_zone is
+    # the TOO-DEEP side.  Both are logged so a run can be audited for either.
+    "valgus_zone_l", "valgus_zone_r", "trunk_zone",
+    "depth_zone", "depth_excess_zone", "overall_zone",
     # ── Rep tracking ─────────────────────────────────────────────────────────
     "rep_phase", "rep_count",
     # ── 3-D metrics (MediaPipe z-depth estimate) ──────────────────────────────
@@ -492,9 +540,13 @@ CORRECTIVE_DWELL_FRAMES = frames_at(CORRECTIVE_DWELL_SEC, FPS_REFERENCE)
 CORRECTIVE_COOLDOWN_SEC = 4.0
 # Order used when several zones are red on the same frame — only the single
 # highest-priority cue plays.  valgus first: it is the validated / most
-# discriminative channel (see zones.py overall-zone notes); depth next; trunk
-# last.
-AUDIO_CORRECTIVE_PRIORITY = ["valgus", "depth", "trunk"]
+# discriminative channel (see zones.py overall-zone notes); the two depth
+# channels next; trunk last.
+#
+# "depth" (too shallow) and "depth_excess" (too deep) can never both be red on
+# the same frame — an angle cannot sit on both sides of the band — so their
+# relative order here is nominal, not a real contest.
+AUDIO_CORRECTIVE_PRIORITY = ["valgus", "depth", "depth_excess", "trunk"]
 
 # ── System status (hysteresis — two dwell thresholds so it cannot oscillate) ─
 # Detection must be BAD continuously for this long before an alert is announced
@@ -526,7 +578,15 @@ AUDIO_SYSTEM_FACE_CAMERA   = "system_face_camera.mp3"
 
 # Corrective cue clips, keyed by zone.
 AUDIO_CORRECT_KNEES_OUT = "correct_knees_out.mp3"   # valgus red
-AUDIO_CORRECT_GO_DEEPER = "correct_go_deeper.mp3"   # depth  red (BOTTOM only)
+AUDIO_CORRECT_GO_DEEPER = "correct_go_deeper.mp3"   # depth too SHALLOW
+# Depth too DEEP — the opposite correction, which had no cue because the depth
+# channel used to be graded from one side only.
+#
+# THIS FILE DOES NOT YET EXIST in assets/audio/.  AudioPlayer.__init__ logs a
+# warning for any missing clip and play() no-ops on an uncached name, so until
+# it is recorded the fault still shows on the overlay and in the zone strip and
+# simply plays no sound — the same degradation the curl clips were shipped with.
+AUDIO_CORRECT_NOT_SO_DEEP = "correct_not_so_deep.mp3"   # depth too DEEP
 # Trunk red alternates between these two for variety (own rotation pointer).
 AUDIO_CORRECT_TRUNK_CLIPS = ["correct_chest_up.mp3", "correct_stay_balanced.mp3"]
 # Reserved for a future rep-tempo trigger — NOT wired yet (documented future work).
@@ -568,7 +628,8 @@ AUDIO_CURL_CORRECTIVE_CLIPS = [
 EXPECTED_AUDIO_CLIPS = (
     AUDIO_SYSTEM_NO_POSE_CLIPS
     + [AUDIO_SYSTEM_FACE_CAMERA,
-       AUDIO_CORRECT_KNEES_OUT, AUDIO_CORRECT_GO_DEEPER, AUDIO_CORRECT_SLOW_DOWN]
+       AUDIO_CORRECT_KNEES_OUT, AUDIO_CORRECT_GO_DEEPER,
+       AUDIO_CORRECT_NOT_SO_DEEP, AUDIO_CORRECT_SLOW_DOWN]
     + AUDIO_CORRECT_TRUNK_CLIPS
     + AUDIO_ENCOURAGE_MILESTONE_CLIPS
     + AUDIO_ENCOURAGE_STREAK_CLIPS

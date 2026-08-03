@@ -39,6 +39,17 @@ _SPECIAL   = set(_LEFT_LEG) | set(_RIGHT_LEG) | set(_TORSO)
 _OTHER     = [(a, b) for a, b in POSE_CONNECTIONS if (a, b) not in _SPECIAL]
 
 
+def _worse_zone(zones):
+    """
+    The live depth colour: the worse of the band's two sides.
+
+    Depth is one thing to the user — "am I squatting to the right depth" — but
+    two channels internally, because too shallow and too deep need opposite
+    spoken corrections.  The info bar shows the single verdict.
+    """
+    return overall_zone([zones["depth"], zones["depth_excess"]])
+
+
 class SquatExercise(Exercise):
     name = "Squat"
     calibration_pose_description = "Stand upright, feet shoulder-width apart"
@@ -112,10 +123,18 @@ class SquatExercise(Exercise):
         # observed on the frames that follow.  Same ordering the bicep curl's ROM
         # cue relies on.  `overall` is recomputed so the border, the aura and the
         # audio all agree with the depth channel rather than contradicting it.
-        if self._rep_counter.consume_shallow_cue():
+        # Both are consumed unconditionally, not short-circuited, so each hold
+        # counter ticks down on its own schedule.
+        too_shallow = self._rep_counter.consume_shallow_cue()
+        too_deep    = self._rep_counter.consume_excess_depth_cue()
+        if too_shallow:
             zones["depth"] = "red"
+        if too_deep:
+            zones["depth_excess"] = "red"
+        if too_shallow or too_deep:
             zones["overall"] = overall_zone([zones["valgus_l"], zones["valgus_r"],
-                                             zones["trunk"], zones["depth"]])
+                                             zones["trunk"], zones["depth"],
+                                             zones["depth_excess"]])
         return zones
 
     def update_rep_counter(self, features, zones, frame_id, lm) -> RepState:
@@ -200,7 +219,7 @@ class SquatExercise(Exercise):
             round(f["hip_angle_r_deg"],          3),
             round(f["hip_sym_diff_deg"],         3),
             zones["valgus_l"], zones["valgus_r"],
-            zones["trunk"],    zones["depth"],
+            zones["trunk"],    zones["depth"], zones["depth_excess"],
             zones["overall"],
             phase_value, rep_count,
             round(f["knee_angle_3d_l_deg"],  3),
@@ -276,12 +295,13 @@ class SquatExercise(Exercise):
                      get_zone_color(zones["trunk"]) if zones else (255, 160, 40)),
             InfoCell(f"Valgus : L:{f['norm_knee_offset_l']:+.2f}  R:{f['norm_knee_offset_r']:+.2f}",
                      valgus_col),
-            # The ratio is what the zone now acts on, so it leads; the raw
-            # femur-normalised value stays visible because every CSV and every
-            # earlier report is expressed in it.  ASCII only (Hershey fonts).
-            InfoCell(f"Depth  : {f['norm_depth_ratio']:.2f}x standing "
-                     f"({f['norm_hip_depth']:.2f}x femur)",
-                     get_zone_color(zones["depth"]) if zones else (130, 255, 100)),
+            # Knee angle is what the depth band acts on, so it leads; the
+            # femur-normalised ratio stays visible as the logged diagnostic it
+            # now is.  Coloured by whichever side of the band is live — they are
+            # mutually exclusive.  ASCII only (Hershey fonts).
+            InfoCell(f"Depth  : {(f['knee_angle_l_deg'] + f['knee_angle_r_deg']) / 2:.0f}deg knee "
+                     f"({f['norm_depth_ratio']:.2f}x standing)",
+                     get_zone_color(_worse_zone(zones)) if zones else (130, 255, 100)),
             self._calib_cell(n, total, done, zones, restarts),
         ]
         return [col1, col2, col3]

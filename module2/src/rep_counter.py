@@ -54,7 +54,7 @@ from config import (
     FPS_REFERENCE, frames_at,
     IDX_HIP_L, IDX_HIP_R, IDX_KNEE_L, IDX_KNEE_R,
 )
-from src.zones import overall_zone, classify_depth
+from src.zones import overall_zone, squat_depth_zones
 from src.pose_utils import landmarks_reliable
 
 
@@ -113,9 +113,12 @@ class RepCounter:
         self._vel_buf     = deque(maxlen=frames_at(REP_VELOCITY_SMOOTH_SEC, self.fps))
         self._prev_smooth = None
 
-        # Frames remaining on the synthetic red depth zone armed by a shallow
-        # rep.  Ticked down by consume_shallow_cue(); see _state_descending.
+        # Frames remaining on each synthetic red depth zone, armed at rep
+        # completion and ticked down by the matching consume_*() call.  Two
+        # counters rather than one because "go deeper" and "not so deep" are
+        # opposite corrections needing different clips.
         self._shallow_cue_frames = 0
+        self._excess_cue_frames  = 0
 
         # Frames elapsed since the most recent phase transition
         self._frames_in_phase = 0
@@ -124,12 +127,6 @@ class RepCounter:
         self._rep_start     = 0
         self._min_angle     = 180.0
         self._max_trunk_dev = 0.0
-        # Deepest hip depth in the current rep (LOWER is deeper), plus the
-        # calibrated standing baseline it is judged against.  inf so the first
-        # accumulated frame always wins; None baseline falls back to the
-        # absolute DEPTH_* thresholds inside classify_depth.
-        self._min_depth      = float("inf")
-        self._depth_baseline = None
         self._worst = {"valgus_l": "green", "valgus_r": "green",
                        "trunk":    "green", "depth":    "green"}
 
@@ -256,8 +253,12 @@ class RepCounter:
                                and self._n_frames >= self._shallow_min)
             if genuine_attempt:
                 self.rep_count += 1
+                # _finalise_rep arms the "go deeper" hold itself, off the same
+                # depth band every other rep is graded by — a descent stopping
+                # above KNEE_BOTTOM (130) necessarily sits above
+                # DEPTH_KNEE_SHALLOW_RED (125), so there is one code path
+                # deciding depth rather than two that could disagree.
                 self._finalise_rep(frame_id, shallow=True)
-                self._shallow_cue_frames = self._shallow_hold_frames
                 self._enter(RepPhase.STANDING, "shallow_rep_rose_before_bottom")
             else:
                 self._enter(RepPhase.STANDING, "aborted_rep_rose_before_bottom")
@@ -319,26 +320,17 @@ class RepCounter:
         trunk_dev           = abs(feats.get("trunk_lean_dev_deg", 0.0))
         self._max_trunk_dev = max(self._max_trunk_dev, trunk_dev)
 
-        # Deepest point reached in this rep, kept as the raw measurement rather
-        # than as a latched zone.  DEPTH IS DELIBERATELY EXCLUDED from the
-        # per-frame _worst latch below and re-derived from this minimum in
-        # _finalise_rep: "did this rep get deep enough" is a question about the
-        # bottom of the movement, exactly like min_knee_angle, and latching the
-        # worst per-frame zone answers a different one.
-        #
-        # It answers it wrongly on a fast descent.  The depth zone divides the
-        # SMOOTHED hip depth by the baseline while its BOTTOM gate opens as soon
-        # as the smoothed knee angle passes 110 deg — and the knee bends faster
-        # than the hips drop, so for a frame or two the rep reads "knees deep,
-        # hips still high" and the zone flashes red.  Measured on job
-        # 75493c29e9d3 at frame 107: knee already 88.5 deg, zone red, and two
-        # frames later green at the genuine bottom.  Latching that transient
-        # marked both of that clip's full-depth squats as red-quality reps.
-        depth_now = feats.get("norm_hip_depth")
-        if depth_now is not None:
-            self._min_depth = min(self._min_depth, depth_now)
-            self._depth_baseline = feats.get("baseline_hip_depth")
-
+        # DEPTH IS DELIBERATELY EXCLUDED from the per-frame _worst latch below.
+        # "Did this rep reach the right depth" is a question about the bottom of
+        # the movement — exactly like min_knee_angle, which _min_angle above
+        # already tracks — so _finalise_rep answers it from that minimum
+        # instead.  Latching the worst per-frame zone answers a different
+        # question, and answers it wrongly on a fast descent: the depth zone's
+        # BOTTOM gate opens as soon as the smoothed knee passes 110 deg, and for
+        # a frame or two around that crossing the reading is still catching up.
+        # Measured on job 75493c29e9d3 at frame 107 the zone read red while the
+        # knee was already at 88.5 deg, two frames before the genuine bottom;
+        # latching it marked both of that clip's full-depth squats as red reps.
         if zones:
             for key in ("valgus_l", "valgus_r", "trunk"):
                 self._worst[key] = _worse(self._worst[key], zones[key])
@@ -357,29 +349,52 @@ class RepCounter:
 
     def consume_shallow_cue(self) -> bool:
         """
-        True while the synthetic red depth zone armed by a shallow rep is still
-        held, ticking the hold down by one frame.
+        True while the synthetic red "too shallow" depth zone is still held,
+        ticking the hold down by one frame.
 
-        Exists because "you did not squat deep enough" is an EDGE-triggered
-        verdict — only knowable once the descent has ended — while the audio
-        controller is LEVEL-triggered, counting consecutive red frames.  Holding
-        the verdict for longer than CORRECTIVE_DWELL_SEC is what lets the two
-        meet.  Same mechanism as the curl's CURL_ROM_CUE_HOLD_FRAMES.
+        Exists because a depth verdict is EDGE-triggered — only knowable once
+        the rep has ended — while the audio controller is LEVEL-triggered,
+        counting consecutive red frames.  Holding the verdict for longer than
+        CORRECTIVE_DWELL_SEC is what lets the two meet.  Same mechanism as the
+        curl's CURL_ROM_CUE_HOLD_FRAMES.
         """
         if self._shallow_cue_frames <= 0:
             return False
         self._shallow_cue_frames -= 1
         return True
 
+    def consume_excess_depth_cue(self) -> bool:
+        """
+        True while the synthetic red "too deep" zone is still held, ticking the
+        hold down by one frame.  Counterpart to consume_shallow_cue(); see there.
+        """
+        if self._excess_cue_frames <= 0:
+            return False
+        self._excess_cue_frames -= 1
+        return True
+
     def _finalise_rep(self, end_frame, shallow=False):
         # Depth verdict from the DEEPEST point of the rep — see _accumulate for
-        # why this is re-derived here instead of latched frame by frame.  A rep
-        # that accumulated no frame at all (every one gated out by the
-        # visibility check) leaves _min_depth at inf and is left green rather
-        # than condemned on missing data.
-        if self._min_depth < float("inf"):
-            self._worst["depth"] = classify_depth(self._min_depth,
-                                                  self._depth_baseline)
+        # why this is re-derived here instead of latched frame by frame, and
+        # config.py for why it is taken from the knee angle rather than the hip
+        # depth ratio.  A rep whose descent was never accumulated (every frame
+        # gated out by the visibility check) leaves _min_angle at its 180.0
+        # sentinel, which would read as maximally shallow; that is missing data,
+        # not a fault, so it is left green.
+        depth_shallow, depth_excess = "green", "green"
+        if self._n_frames:
+            depth_shallow, depth_excess = squat_depth_zones(self._min_angle)
+        self._worst["depth"] = overall_zone([depth_shallow, depth_excess])
+
+        # Arm whichever correction this rep earned, as a synthetic zone held
+        # long enough for the level-triggered audio controller to see it.  The
+        # two are mutually exclusive by construction (an angle cannot be both
+        # above and below the band), so they can never both speak.
+        if depth_shallow == "red":
+            self._shallow_cue_frames = self._shallow_hold_frames
+        elif depth_excess == "red":
+            self._excess_cue_frames = self._shallow_hold_frames
+
         quality = overall_zone(list(self._worst.values()))
         if shallow:
             # A rep that never reached depth is a failed rep whatever the other
@@ -422,7 +437,6 @@ class RepCounter:
     def _reset_stats(self):
         self._min_angle     = 180.0
         self._max_trunk_dev = 0.0
-        self._min_depth     = float("inf")
         self._worst         = {k: "green" for k in self._worst}
         self._sum_knee      = 0.0
         self._sum_trunk_dev = 0.0

@@ -17,6 +17,8 @@ from config import (
     TRUNK_DEV_YELLOW, TRUNK_DEV_RED,
     DEPTH_YELLOW, DEPTH_RED,
     DEPTH_RATIO_YELLOW, DEPTH_RATIO_RED,
+    DEPTH_KNEE_SHALLOW_YELLOW, DEPTH_KNEE_SHALLOW_RED,
+    DEPTH_KNEE_DEEP_YELLOW, DEPTH_KNEE_DEEP_RED,
     DEPTH_PHASE_BOTTOM_THRESHOLD,
     VALGUS_3D_YELLOW, VALGUS_3D_RED,
     ASYMMETRY_YELLOW, ASYMMETRY_RED,
@@ -93,6 +95,26 @@ def classify_depth(value, baseline=None):
     if value > DEPTH_YELLOW:
         return "yellow"
     return "green"
+
+
+def squat_depth_zones(knee_deg):
+    """
+    Two-sided squat-depth verdict from a knee angle, as
+    (too_shallow_zone, too_deep_zone).
+
+    Both sides are reported separately rather than reduced to one zone because
+    each drives its OWN audio cue: "go deeper" and "not so deep" are opposite
+    corrections and a single channel can only speak one clip.  A given angle can
+    only trip one side, so at most one of the two is ever non-green.
+
+    Angle is the DEEPEST point of a rep for the per-rep verdict, or the smoothed
+    current angle for the live BOTTOM-phase indicator.
+    """
+    shallow = ("red"    if knee_deg > DEPTH_KNEE_SHALLOW_RED else
+               "yellow" if knee_deg > DEPTH_KNEE_SHALLOW_YELLOW else "green")
+    deep    = ("red"    if knee_deg < DEPTH_KNEE_DEEP_RED else
+               "yellow" if knee_deg < DEPTH_KNEE_DEEP_YELLOW else "green")
+    return shallow, deep
 
 
 def classify_depth_phase_aware(value, phase_label, baseline=None):
@@ -230,7 +252,9 @@ def compute_zones(feats, smoother):
                  "knee_angle",  "asymmetry"    ← new additions
 
     Returns a dict:
-      valgus_l, valgus_r, trunk, depth, overall  → zone strings
+      valgus_l, valgus_r, trunk, overall          → zone strings
+      depth        → too SHALLOW at BOTTOM (knee angle above the band)
+      depth_excess → too DEEP at BOTTOM (knee angle below the band)
       valgus_3d_l, valgus_3d_r                   → 3-D valgus zone strings
       asymmetry_score                             → smoothed numeric score (float)
       asymmetry                                   → asymmetry zone string
@@ -260,20 +284,33 @@ def compute_zones(feats, smoother):
     z3dl = classify_valgus_3d(mean(smoother["valgus_3d_l"]))
     z3dr = classify_valgus_3d(mean(smoother["valgus_3d_r"]))
 
-    # Phase-aware depth — only fires at BOTTOM.  The baseline rides in the
-    # features dict (put there by the exercise from its Calibration) rather than
-    # being passed separately, because classify_zones() has no calibration
-    # argument and the squat already carries baseline_trunk_lean_deg the same way.
-    phase_label = _get_phase_label(smoother["knee_angle"])
-    zd          = classify_depth_phase_aware(mean(smoother["depth"]), phase_label,
-                                             feats.get("baseline_hip_depth"))
+    # Depth, from the smoothed knee angle, evaluated only at BOTTOM.
+    #
+    # The BOTTOM gate makes the LIVE indicator honest about what is knowable
+    # frame by frame: mid-descent the knee necessarily passes through every
+    # shallow angle on its way down, so grading depth then would read red on the
+    # way to a perfectly good squat.  "Too deep", by contrast, IS knowable live —
+    # if the knee is at 50 degrees right now, it is at 50 degrees right now.
+    #
+    # The consequence is that a rep which never reaches BOTTOM cannot be graded
+    # here at all — see DEPTH_PHASE_BOTTOM_THRESHOLD's note on that circularity.
+    # RepCounter grades every completed rep from its deepest point instead and
+    # arms a synthetic zone, which is what actually catches a short squat.
+    phase_label   = _get_phase_label(smoother["knee_angle"])
+    smooth_knee   = mean(smoother["knee_angle"])
+    if phase_label == "BOTTOM":
+        zd, zd_excess = squat_depth_zones(smooth_knee)
+    else:
+        zd, zd_excess = "green", "green"
 
     # Asymmetry zone
     smooth_asym = mean(smoother["asymmetry"])
     za          = classify_asymmetry(smooth_asym)
 
     # Overall zone aggregates: 2D valgus L (zl), 2D valgus R (zr), trunk (zt),
-    # hip depth (zd).
+    # and BOTH sides of the depth band — too shallow (zd) and too deep
+    # (zd_excess).  Going well past parallel is a fault the overall status has
+    # to reflect; leaving it out was what let an over-deep rep read GOOD.
     #
     # Three channels excluded from overall (still computed and CSV-logged):
     #   za (asymmetry): all three formula variants (max/knee-only/mean) yield
@@ -284,13 +321,14 @@ def compute_zones(feats, smoother):
     #   z3dl, z3dr (3D valgus L/R): Lite model z-depth is too noisy -- correct-form
     #       reads ~1.0, making the metric non-discriminative. Recovery requires the
     #       Full/Heavy model. Logged for future model-upgrade analysis.
-    zo = overall_zone([zl, zr, zt, zd])
+    zo = overall_zone([zl, zr, zt, zd, zd_excess])
 
     return {
         "valgus_l":        zl,
         "valgus_r":        zr,
         "trunk":           zt,
         "depth":           zd,
+        "depth_excess":    zd_excess,
         "overall":         zo,
         "valgus_3d_l":     z3dl,
         "valgus_3d_r":     z3dr,

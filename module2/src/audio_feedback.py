@@ -47,7 +47,8 @@ from config import (
     SYSTEM_STATUS_COOLDOWN_SEC,
     ENCOURAGE_MILESTONE_INTERVAL, ENCOURAGE_STREAK_LENGTH, ENCOURAGE_COOLDOWN_SEC,
     AUDIO_SYSTEM_NO_POSE_CLIPS, AUDIO_SYSTEM_FACE_CAMERA,
-    AUDIO_CORRECT_KNEES_OUT, AUDIO_CORRECT_GO_DEEPER, AUDIO_CORRECT_TRUNK_CLIPS,
+    AUDIO_CORRECT_KNEES_OUT, AUDIO_CORRECT_GO_DEEPER, AUDIO_CORRECT_NOT_SO_DEEP,
+    AUDIO_CORRECT_TRUNK_CLIPS,
     AUDIO_ENCOURAGE_MILESTONE_CLIPS, AUDIO_ENCOURAGE_STREAK_CLIPS,
     LANDMARK_MIN_VISIBILITY,
     IDX_HIP_L, IDX_HIP_R, IDX_KNEE_L, IDX_KNEE_R,
@@ -112,16 +113,20 @@ def default_corrective_channels():
     spec = {
         "valgus": (["valgus_l", "valgus_r"], {"DESCENDING", "BOTTOM"},
                    [AUDIO_CORRECT_KNEES_OUT]),
-        # STANDING is in the depth channel's phase set for the SHALLOW-REP cue.
-        # A squat that stops short never enters BOTTOM — that is precisely the
-        # fault — so gating "go deeper" on BOTTOM alone made it unreachable for
-        # the one case it exists to serve.  RepCounter arms a synthetic red depth
-        # zone as the shallow rep ends, by which point the phase has returned to
-        # STANDING, which is also the natural moment to tell someone to go deeper
-        # next time.  A genuinely deep-but-still-shallow rep is still caught at
-        # BOTTOM by the ratio thresholds.
+        # STANDING is in both depth channels' phase sets because both cues are
+        # armed at REP COMPLETION, by which point the phase has returned to
+        # STANDING — and that is also the natural moment to be told what to do
+        # differently on the next rep.
+        #
+        # For "go deeper" it is the only workable gate: a squat that stops short
+        # never enters BOTTOM, which is precisely the fault, so gating on BOTTOM
+        # alone made the cue unreachable for the one case it exists to serve.
         "depth":  (["depth"], {"BOTTOM", "STANDING"},
                    [AUDIO_CORRECT_GO_DEEPER]),
+        # Too deep — reachable live at BOTTOM as well, since an over-deep
+        # position is knowable while it is happening, unlike a short one.
+        "depth_excess": (["depth_excess"], {"BOTTOM", "STANDING"},
+                         [AUDIO_CORRECT_NOT_SO_DEEP]),
         "trunk":  (["trunk"], {"DESCENDING", "BOTTOM", "ASCENDING"},
                    list(AUDIO_CORRECT_TRUNK_CLIPS)),
     }
