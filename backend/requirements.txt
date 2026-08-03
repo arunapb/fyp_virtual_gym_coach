@@ -4,11 +4,20 @@
 # scikit-learn, seaborn — that are not imported anywhere in the runtime path
 # this backend drives).
 #
-# REQUIRES PYTHON 3.10+. Module 2's source uses `X | None` union-type syntax
-# (PEP 604) in live function signatures, evaluated eagerly — it will not
-# import on 3.9. Both modules run fine standalone on their own documented
-# versions; this backend imports Module 2's src/config directly (unmodified),
-# so it inherits Module 2's floor. Verified working on Python 3.12.10.
+# REQUIRES PYTHON 3.10-3.12. Verified working on Python 3.12.10.
+#
+# Floor: Module 2's source uses `X | None` union-type syntax (PEP 604) in live
+# function signatures, evaluated eagerly — it will not import on 3.9. Both
+# modules run fine standalone on their own documented versions; this backend
+# imports Module 2's src/config directly (unmodified), so it inherits Module
+# 2's floor.
+#
+# Ceiling: mediapipe 0.10.14 below publishes no wheel for 3.13+, so pip fails
+# outright there. Do NOT "fix" that by bumping the pin — Module 1's
+# pose_extractor.py uses the legacy `mp.solutions.pose` API, which the
+# 3.13-compatible mediapipe releases drop. That path is live in the server
+# (backend/module1_worker.py -> module1/src/session.py), so a bump converts an
+# install error into a runtime one. Use Python 3.12 instead.
 #
 # Versions below are what was verified working (pip install, no pins beyond
 # what's listed) — loosen/tighten as needed for your environment.
